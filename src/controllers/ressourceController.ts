@@ -9,6 +9,7 @@ import { GlobalTypeRessource } from "../constants/typeRessource.js";
  */
 export const getAllResources = async (req: Request, res: Response) => {
   try {
+
     const { categorie, typeRessource, typeRelation, sort } = req.query;
 
     const query: any = {

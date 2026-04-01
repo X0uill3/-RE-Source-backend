@@ -2,6 +2,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface ITypeRelation extends Document {
     name: string;
+    description?: string;
     systemStatus: 'Enabled' | 'Disabled';
     createdAt: Date;
     updatedAt: Date;
@@ -9,6 +10,7 @@ export interface ITypeRelation extends Document {
 
 const TypeRelationSchema = new mongoose.Schema<ITypeRelation>({
     name: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
     systemStatus: {
         type: String,
         enum: ['Enabled', 'Disabled'],
