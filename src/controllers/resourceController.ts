@@ -8,7 +8,7 @@ import { GlobalRole } from "../constants/roles.js";
  */
 export const getAllResources = async (req: Request, res: Response) => {
   try {
-    // Filtres dynamiques (Catégorie, Type, Relation)
+
     const { categorie, typeRessource, typeRelation, sort } = req.query;
 
     const query: any = {
