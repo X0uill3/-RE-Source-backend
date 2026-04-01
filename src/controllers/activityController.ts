@@ -8,7 +8,7 @@ import Activity from '../models/Activity.js';
 export const getAllActivities = async (req: Request, res: Response) => {
     try {
         const activities = await Activity.find().sort('-createdAt');
-        
+
         res.status(200).json({
             status: 'success',
             results: activities.length,
@@ -107,6 +107,44 @@ export const deleteActivity = async (req: Request, res: Response) => {
             status: 'success',
             data: null
         });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Désactiver une activité (Admin)
+ * @route   PATCH /api/activities/:id/disable
+ * @access  Privé (Admin)
+ * */
+export const disableActivity = async (req: Request, res: Response) => {
+    try {
+        const activity = await Activity.findById(req.params.id).where('systemStatus').equals('Enabled');
+        if (!activity) {
+            return res.status(404).json({ status: 'error', message: "Activité non trouvée" });
+        }
+        activity.systemStatus = 'Disabled';
+        await activity.save();
+        res.status(200).json({ status: 'success', data: { activity } });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Activer une activité (Admin)
+ * @route   PATCH /api/activities/:id/enable
+ * @access  Privé (Admin)
+ * */
+export const enableActivity = async (req: Request, res: Response) => {
+    try {
+        const activity = await Activity.findById(req.params.id).where('systemStatus').equals('Disabled');
+        if (!activity) {
+            return res.status(404).json({ status: 'error', message: "Activité non trouvée" });
+        }
+        activity.systemStatus = 'Enabled';
+        await activity.save();
+        res.status(200).json({ status: 'success', data: { activity } });
     } catch (error: any) {
         res.status(400).json({ status: 'error', message: error.message });
     }

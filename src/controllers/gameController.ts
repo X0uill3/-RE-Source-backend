@@ -8,7 +8,7 @@ import Game from '../models/Game.js';
 export const getAllGames = async (req: Request, res: Response) => {
     try {
         const games = await Game.find().sort('-createdAt');
-        
+
         res.status(200).json({
             status: 'success',
             results: games.length,
@@ -108,6 +108,44 @@ export const deleteGame = async (req: Request, res: Response) => {
             status: 'success',
             data: null
         });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Désactiver un jeu (Admin)
+ * @route   PATCH /api/games/:id/disable
+ * @access  Privé (Admin)
+ * */
+export const disableGame = async (req: Request, res: Response) => {
+    try {
+        const game = await Game.findById(req.params.id).where('systemStatus').equals('Enabled');
+        if (!game) {
+            return res.status(404).json({ status: 'error', message: "Jeu non trouvé" });
+        }
+        game.systemStatus = 'Disabled';
+        await game.save();
+        res.status(200).json({ status: 'success', data: { game } });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Activer un jeu (Admin)
+ * @route   PATCH /api/games/:id/enable
+ * @access  Privé (Admin)
+ * */
+export const enableGame = async (req: Request, res: Response) => {
+    try {
+        const game = await Game.findById(req.params.id).where('systemStatus').equals('Disabled');
+        if (!game) {
+            return res.status(404).json({ status: 'error', message: "Jeu non trouvé" });
+        }
+        game.systemStatus = 'Enabled';
+        await game.save();
+        res.status(200).json({ status: 'success', data: { game } });
     } catch (error: any) {
         res.status(400).json({ status: 'error', message: error.message });
     }

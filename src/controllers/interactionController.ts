@@ -12,7 +12,8 @@ export const recordInteraction = async (req: any, res: Response) => {
         const newInteraction = new Interaction({
             UserId: req.user._id,
             interactionType,
-            ressourceId
+            ressourceId,
+            ReceiverId: req.body.ReceiverId || null
         });
         await newInteraction.save();
         res.status(201).json({ status: 'success', data: { interaction: newInteraction } });
