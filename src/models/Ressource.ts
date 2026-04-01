@@ -1,4 +1,5 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
+import { GlobalTypeRessource } from "../constants/typeRessource.js";
 
 export interface IRessource extends Document {
   userId: mongoose.Schema.Types.ObjectId;
@@ -11,7 +12,7 @@ export interface IRessource extends Document {
   views: number;
   path_media: string;
   categorie: mongoose.Schema.Types.ObjectId;
-  typeRessource: mongoose.Schema.Types.ObjectId;
+  typeRessource: GlobalTypeRessource;
   typeRelation: mongoose.Schema.Types.ObjectId;
 }
 
@@ -54,8 +55,8 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
     ref: "Categorie",
   },
   typeRessource: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "TypeRessource",
+    type: String,
+    enum: Object.values(GlobalTypeRessource),
   },
   typeRelation: {
     type: mongoose.Schema.Types.ObjectId,

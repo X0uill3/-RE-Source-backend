@@ -21,8 +21,8 @@ export const getAllResources = async (req: Request, res: Response) => {
     if (typeRelation) query.typeRelation = typeRelation;
 
     const resources = await Resource.find(query)
-      .populate("author", "firstname lastname")
-      .populate("categorie typeRessource typeRelation")
+      .populate("userId", "firstname lastname")
+      .populate("categorie typeRelation")
       .sort(sort ? String(sort) : "-createdAt");
 
     res.status(200).json({
@@ -41,10 +41,9 @@ export const getAllResources = async (req: Request, res: Response) => {
  */
 export const getRestrictedResources = async (req: any, res: Response) => {
   try {
-    // Un utilisateur connecté voit tout ce qui est 'Enabled' (Public + Private)
     const resources = await Resource.find({ systemStatus: "Enabled" })
-      .populate("author", "firstname lastname")
-      .populate("categorie typeRessource")
+      .populate("userId", "firstname lastname")
+      .populate("categorie typeRelation")
       .sort("-createdAt");
 
     res.status(200).json({ status: "success", data: { resources } });
@@ -60,14 +59,12 @@ export const getRestrictedResources = async (req: any, res: Response) => {
 export const getResource = async (req: Request, res: Response) => {
   try {
     const resource = await Resource.findById(req.params.id)
-      .populate("author", "firstname lastname")
-      .populate("categorie typeRessource typeRelation")
-      .populate("comments.author", "firstname");
+      .populate("userId", "firstname lastname")
+      .populate("categorie typeRelation");
 
     if (!resource)
       return res.status(404).json({ message: "Ressource non trouvée" });
 
-    // Incrémentation auto des vues lors de l'affichage
     resource.views += 1;
     await resource.save();
 
@@ -83,13 +80,11 @@ export const getResource = async (req: Request, res: Response) => {
  */
 export const createResource = async (req: any, res: Response) => {
   try {
-    // Par défaut, une ressource créée par un Citoyen est "Disabled" (en attente de validation)
-    // Sauf si c'est un ADMIN qui crée
     const status = req.user.role === GlobalRole.ADMIN ? "Enabled" : "Disabled";
 
     const data = {
       ...req.body,
-      author: req.user._id,
+      userId: req.user._id,
       systemStatus: status,
     };
 
@@ -107,7 +102,6 @@ export const createResource = async (req: any, res: Response) => {
  */
 export const updateResource = async (req: any, res: Response) => {
   try {
-    // Sécurité : on vérifie si l'utilisateur est l'auteur ou un admin
     const resourceToUpdate = await Resource.findById(req.params.id);
 
     if (!resourceToUpdate) {
@@ -123,8 +117,9 @@ export const updateResource = async (req: any, res: Response) => {
       });
     }
 
-    // Si un citoyen modifie, on repasse le statut en 'Disabled' pour re-validation
-    const updateData = { ...req.body };
+    const updateData = { ...req.body, updatedAt: Date.now() };
+
+    // Sécurité : Un citoyen ne peut pas s'auto-valider en modifiant
     if (req.user.role !== GlobalRole.ADMIN) {
       updateData.systemStatus = "Disabled";
     }
@@ -132,10 +127,7 @@ export const updateResource = async (req: any, res: Response) => {
     const resource = await Resource.findByIdAndUpdate(
       req.params.id,
       updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
 
     res.status(200).json({ status: "success", data: { resource } });
@@ -150,13 +142,9 @@ export const updateResource = async (req: any, res: Response) => {
  */
 export const validateResource = async (req: Request, res: Response) => {
   try {
-    // "Validation" correspond à passer le systemStatus à "Enabled"
     const resource = await Resource.findByIdAndUpdate(
       req.params.id,
-      {
-        systemStatus: "Enabled",
-        updatedAt: Date.now(),
-      },
+      { systemStatus: "Enabled", updatedAt: Date.now() },
       { new: true },
     );
 
