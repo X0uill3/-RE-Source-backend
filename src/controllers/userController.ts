@@ -1,0 +1,245 @@
+import type { Request, Response } from 'express';
+import User from '../models/User.js';
+import { saveLog } from '../utils/logger.js';
+import Diary from '../models/Diary.js';
+import Articles from '../models/Articles.js';
+import Logs from '../models/Log.js';
+import { GlobalRole } from '../constants/roles.js';
+
+/**
+ * @desc Compte fantôme pour les articles d'auteurs supprimés (Sécurité RGPD)
+ * @returns {Promise<Document>}
+ */
+const getOrCreateGhostAccount = async () => {
+    const GHOST_EMAIL = 'anonyme@cesizen.fr';
+
+    let ghost = await User.findOne({ email: GHOST_EMAIL });
+
+    if (!ghost) {
+        ghost = await User.create({
+            email: GHOST_EMAIL,
+            password: Math.random().toString(36).slice(-10),
+            firstname: 'Compte',
+            lastname: 'Supprimé',
+            role: GlobalRole.USER,
+            systemStatus: 'Disabled'
+        });
+        console.log('👻 Compte fantôme créé à la volée !');
+    }
+
+    return ghost;
+};
+
+/**
+ * @desc    Récupérer mon profil (Utilisateur connecté)
+ * @route   GET /api/users/me
+ */
+export const getMe = async (req: any, res: Response) => {
+    try {
+        // L'utilisateur est déjà dans req.user grâce au middleware protect
+        res.status(200).json({
+            status: 'success',
+            data: { user: req.user }
+        });
+    } catch (error: any) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Modifier mon profil (Utilisateur connecté)
+ * @route   PATCH /api/users/updateMe
+ */
+export const updateMe = async (req: any, res: Response) => {
+    try {
+        // Sécurité : on filtre les champs pour empêcher l'auto-promotion en ADMIN
+        const { firstname, lastname, email, birthdate } = req.body;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            { firstname, lastname, email, birthdate },
+            { new: true, runValidators: true }
+        );
+
+        res.status(200).json({
+            status: 'success',
+            data: { user: updatedUser }
+        });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Modifier mon mot de passe (Utilisateur connecté)
+ * @route   PATCH /api/users/updateMyPassword
+ */
+export const updateMyPassword = async (req: any, res: Response) => {
+    try {
+        const { passwordCurrent, password, passwordConfirm } = req.body;
+
+        if (password !== passwordConfirm) {
+            return res.status(400).json({ status: 'error', message: "Les mots de passe ne correspondent pas." });
+        }
+
+        const user = await User.findById(req.user._id).select('+password');
+        if (!user) {
+            return res.status(404).json({ status: 'error', message: "Utilisateur non trouvé." });
+        }
+
+        const isMatch = await user.comparePassword(passwordCurrent);
+        if (!isMatch) {
+            return res.status(401).json({ status: 'error', message: "Mot de passe actuel incorrect." });
+        }
+
+        user.password = password;
+        await user.save();
+
+        await saveLog({
+            action: 'PASSWORD_CHANGED',
+            userId: req.user._id.toString(),
+            details: `L'utilisateur ${user.email} a changé son mot de passe.`
+        });
+
+        res.status(200).json({ status: 'success', message: "Mot de passe mis à jour avec succès." });
+    } catch (error: any) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Récupérer tous les utilisateurs (Admin uniquement)
+ * @route   GET /api/users
+ */
+export const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const users = await User.find().sort('-createdAt');
+        res.status(200).json({
+            status: 'success',
+            results: users.length,
+            data: { users }
+        });
+    } catch (error: any) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Gérer un compte : changer rôle ou statut (Admin uniquement)
+ * @route   PATCH /api/users/:id
+ */
+export const updateUser = async (req: any, res: Response) => { // On utilise 'any' ou ton interface AuthRequest
+    try {
+        const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+            new: true,
+            runValidators: true
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        await saveLog({
+            action: 'USER_UPDATED',
+            adminId: req.user._id.toString(),
+            userId: user._id.toString(),
+            details: `Profil de ${user.email} mis à jour par l'administrateur.`
+        });
+
+        res.status(200).json({ status: 'success', data: { user } });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc    Désactivation administrative d'un compte (Admin uniquement)
+ * @route   DELETE /api/users/:id
+ */
+export const deleteUser = async (req: any, res: Response) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { systemStatus: 'Disabled' },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+        await saveLog({
+            action: 'USER_DEACTIVATED',
+            adminId: req.user._id.toString(),
+            userId: user._id.toString(),
+            details: `Compte de ${user.email} désactivé par l'administrateur.`
+        });
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Le compte a été désactivé avec succès',
+            data: { user }
+        });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * @desc   Réactivation administrative d'un compte (Admin uniquement)
+ * @route  PATCH /api/users/:id/reactivate
+ */
+export const reactivateUser = async (req: any, res: Response) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { systemStatus: 'Enabled' },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        await saveLog({
+            action: 'USER_REACTIVATED',
+            adminId: req.user._id.toString(),
+            userId: user._id.toString(),
+            details: `Compte de ${user.email} réactivé par l'administrateur.`
+        });
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Le compte a été réactivé avec succès',
+            data: { user }
+        });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
+
+export const deleteMe = async (req: any, res: Response) => {
+    try {
+        await Diary.deleteMany({ user: req.user._id });
+
+        const ghostAccount = await getOrCreateGhostAccount();
+
+        await Articles.updateMany(
+            { author: req.user._id },
+            { author: ghostAccount._id }
+        );
+
+        await Logs.updateMany(
+            { userId: req.user._id },
+            { userId: ghostAccount._id }
+        );
+
+        await User.findByIdAndDelete(req.user._id);
+
+        res.status(204).json({
+            status: 'success',
+            data: null
+        });
+    } catch (error: any) {
+        res.status(400).json({ status: 'error', message: error.message });
+    }
+};
