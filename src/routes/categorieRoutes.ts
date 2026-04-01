@@ -18,3 +18,5 @@ router.get('/all', getAllCategoriesAdmin);
 router.patch('/:id', updateCategory);
 router.patch('/:id/disable', disableCategory);
 router.patch('/:id/enable', enableCategory);
+
+export default router;

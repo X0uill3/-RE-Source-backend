@@ -17,3 +17,5 @@ router.post('/', createTypeRelation);
 router.patch('/:id', updateTypeRelation);
 router.patch('/:id/disable', disableTypeRelation);
 router.patch('/:id/enable', enableTypeRelation);
+
+export default router;
