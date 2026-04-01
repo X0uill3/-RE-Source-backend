@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
-import { GlobalRole } from '../constants/roles.js'; // On déplace l'enum ici
+import { GlobalRole } from '../constants/roles.js';
 
 export interface IUser extends Document {
     firstname: string;
@@ -10,7 +10,7 @@ export interface IUser extends Document {
     birthdate?: Date;
     role: GlobalRole;
     picture?: string;
-    systemStatus: 'Enabled' | 'Disabled'; // Pour la désactivation par l'Admin
+    systemStatus: 'Enabled' | 'Disabled';
     createdAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }

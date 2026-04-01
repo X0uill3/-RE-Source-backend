@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "jest",
-    "dev": "tsx watch src/index.ts",
-    "seeder": "tsx src/seed.ts",
-    "changePassword": "tsx src/utils/changePassword.ts"
+    "dev": "tsx watch src/index.ts"
   },
   "keywords": [],
   "author": "",

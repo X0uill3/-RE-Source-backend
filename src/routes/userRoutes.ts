@@ -5,16 +5,20 @@ import { GlobalRole } from '../constants/roles.js';
 
 const router = Router();
 
+router.use(protect);
+
 // Routes pour les utilisateurs connectés
-router.get('/me', protect, getMe);
-router.patch('/updateMe', protect, updateMe);
-router.delete('/deleteMe', protect, deleteMe);
-router.patch('/updateMyPassword', protect, updateMyPassword);
+router.get('/me', getMe);
+router.patch('/updateMe', updateMe);
+router.delete('/deleteMe', deleteMe);
+router.patch('/updateMyPassword', updateMyPassword);
 
 // Routes pour les admins
-router.get('/', protect, checkRole([GlobalRole.ADMIN]), getAllUsers);
-router.patch('/:id', protect, checkRole([GlobalRole.ADMIN]), updateUser);
-router.delete('/:id', protect, checkRole([GlobalRole.ADMIN]), deleteUser);
-router.patch('/:id/reactivate', protect, checkRole([GlobalRole.ADMIN]), reactivateUser);
+router.use(checkRole([GlobalRole.ADMIN]));
+
+router.get('/', getAllUsers);
+router.patch('/:id', updateUser);
+router.delete('/:id', deleteUser);
+router.patch('/:id/reactivate', reactivateUser);
 
 export default router;

@@ -1,9 +1,5 @@
 import type { Request, Response } from 'express';
 import User from '../models/User.js';
-import { saveLog } from '../utils/logger.js';
-import Diary from '../models/Diary.js';
-import Articles from '../models/Articles.js';
-import Logs from '../models/Log.js';
 import { GlobalRole } from '../constants/roles.js';
 
 /**
@@ -95,12 +91,6 @@ export const updateMyPassword = async (req: any, res: Response) => {
         user.password = password;
         await user.save();
 
-        await saveLog({
-            action: 'PASSWORD_CHANGED',
-            userId: req.user._id.toString(),
-            details: `L'utilisateur ${user.email} a changé son mot de passe.`
-        });
-
         res.status(200).json({ status: 'success', message: "Mot de passe mis à jour avec succès." });
     } catch (error: any) {
         res.status(500).json({ status: 'error', message: error.message });
@@ -139,13 +129,6 @@ export const updateUser = async (req: any, res: Response) => { // On utilise 'an
             return res.status(404).json({ message: "Utilisateur non trouvé" });
         }
 
-        await saveLog({
-            action: 'USER_UPDATED',
-            adminId: req.user._id.toString(),
-            userId: user._id.toString(),
-            details: `Profil de ${user.email} mis à jour par l'administrateur.`
-        });
-
         res.status(200).json({ status: 'success', data: { user } });
     } catch (error: any) {
         res.status(400).json({ status: 'error', message: error.message });
@@ -167,12 +150,6 @@ export const deleteUser = async (req: any, res: Response) => {
         if (!user) {
             return res.status(404).json({ message: "Utilisateur non trouvé" });
         }
-        await saveLog({
-            action: 'USER_DEACTIVATED',
-            adminId: req.user._id.toString(),
-            userId: user._id.toString(),
-            details: `Compte de ${user.email} désactivé par l'administrateur.`
-        });
 
         res.status(200).json({
             status: 'success',
@@ -200,13 +177,6 @@ export const reactivateUser = async (req: any, res: Response) => {
             return res.status(404).json({ message: "Utilisateur non trouvé" });
         }
 
-        await saveLog({
-            action: 'USER_REACTIVATED',
-            adminId: req.user._id.toString(),
-            userId: user._id.toString(),
-            details: `Compte de ${user.email} réactivé par l'administrateur.`
-        });
-
         res.status(200).json({
             status: 'success',
             message: 'Le compte a été réactivé avec succès',
@@ -219,19 +189,6 @@ export const reactivateUser = async (req: any, res: Response) => {
 
 export const deleteMe = async (req: any, res: Response) => {
     try {
-        await Diary.deleteMany({ user: req.user._id });
-
-        const ghostAccount = await getOrCreateGhostAccount();
-
-        await Articles.updateMany(
-            { author: req.user._id },
-            { author: ghostAccount._id }
-        );
-
-        await Logs.updateMany(
-            { userId: req.user._id },
-            { userId: ghostAccount._id }
-        );
 
         await User.findByIdAndDelete(req.user._id);
 

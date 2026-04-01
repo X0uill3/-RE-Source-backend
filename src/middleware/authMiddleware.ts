@@ -50,11 +50,9 @@ export const softProtect = async (req: AuthRequest, res: Response, next: NextFun
                 return res.status(403).json({ message: "Compte désactivé" });
             }
         } catch (error) {
-            // En cas d'erreur de token (invalide, expiré), on traite comme un invité
             req.user = { role: GlobalRole.GUEST };
         }
     } else {
-        // Pas de token, on traite comme un invité
         req.user = { role: GlobalRole.GUEST };
     }
 
