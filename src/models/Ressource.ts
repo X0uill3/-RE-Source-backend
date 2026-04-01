@@ -9,6 +9,9 @@ export interface IRessource extends Document {
     updatedAt: Date;
     views: number;
     path_media: string;
+    categorie: mongoose.Schema.Types.ObjectId;
+    typeRessource: mongoose.Schema.Types.ObjectId;
+    typeRelation: mongoose.Schema.Types.ObjectId;
 }
 
 const RessourceSchema = new mongoose.Schema<IRessource>({
@@ -40,6 +43,18 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
         type: String,
         required: false,
         default: ''
+    },
+    categorie: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Categorie'
+    },
+    typeRessource: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TypeRessource'
+    },
+    typeRelation: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TypeRelation'
     }
 });
 

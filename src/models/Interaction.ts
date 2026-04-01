@@ -7,13 +7,16 @@ export interface IInteraction extends Document {
 
 
 const InteractionSchema = new mongoose.Schema<IInteraction>({
-    UserId: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User',    
+    UserId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
     },
-    date: { 
-        type: Date, 
-        default: Date.now 
+    date: {
+        type: Date,
+        default: Date.now
     }
 
 });
+
+const InteractionModel: Model<IInteraction> = mongoose.model<IInteraction>("Interaction", InteractionSchema);
+export default InteractionModel;
