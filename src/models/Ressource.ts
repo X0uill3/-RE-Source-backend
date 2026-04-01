@@ -14,6 +14,7 @@ export interface IRessource extends Document {
   categorie: mongoose.Schema.Types.ObjectId;
   typeRessource: GlobalTypeRessource;
   typeRelation: mongoose.Schema.Types.ObjectId;
+  start: boolean;
 }
 
 const RessourceSchema = new mongoose.Schema<IRessource>({
@@ -61,6 +62,10 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
   typeRelation: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "TypeRelation",
+  },
+  start: {
+    type: Boolean,
+    default: false,
   },
 });
 

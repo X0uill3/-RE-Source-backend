@@ -1,5 +1,6 @@
 export enum GlobalRole {
-    USER = 'USER',
-    ADMIN = 'ADMIN',
-    GUEST = 'GUEST'
+  USER = "USER",
+  ADMIN = "ADMIN",
+  GUEST = "GUEST",
+  MODERATOR = "MODERATOR",
 }

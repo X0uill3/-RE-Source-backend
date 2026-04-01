@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import Resource from "../models/Ressource.js";
 import { GlobalRole } from "../constants/roles.js";
+import { GlobalTypeRessource } from "../constants/typeRessource.js";
 
 /**
  * @desc    Lister les ressources publiques (Citoyen)
@@ -174,5 +175,43 @@ export const deleteResource = async (req: Request, res: Response) => {
     res.status(204).json({ status: "success", data: null });
   } catch (error: any) {
     res.status(400).json({ status: "error", message: error.message });
+  }
+};
+/**
+ * @desc    Démarrer une ressource de type Activité/Jeu
+ * @route   PATCH /api/resources/:id/start
+ */
+export const startResource = async (req: Request, res: Response) => {
+  try {
+    const resource = await Resource.findById(req.params.id);
+
+    if (!resource) {
+      return res.status(404).json({ message: "Ressource non trouvée" });
+    }
+
+    const playableTypes = [
+      GlobalTypeRessource.GAME,
+      GlobalTypeRessource.ACTIVITY,
+    ];
+
+    if (!playableTypes.includes(resource.typeRessource)) {
+      return res.status(400).json({
+        message:
+          "Cette ressource n'est pas de type Jeu ou Activité et ne peut pas être démarrée.",
+      });
+    }
+
+    resource.start = true;
+    resource.updatedAt = new Date();
+
+    await resource.save();
+
+    res.status(200).json({
+      status: "success",
+      message: "La ressource a été démarrée",
+      data: { resource },
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
   }
 };
