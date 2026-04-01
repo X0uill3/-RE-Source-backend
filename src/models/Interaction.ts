@@ -6,6 +6,7 @@ export interface IInteraction extends Document {
     date: Date;
     interactionType: RessourceInteractionType;
     ressourceId: mongoose.Schema.Types.ObjectId;
+    ReceiverId?: mongoose.Schema.Types.ObjectId;
 }
 
 
@@ -27,6 +28,11 @@ const InteractionSchema = new mongoose.Schema<IInteraction>({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Ressource',
         required: true
+    },
+    ReceiverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
     }
 });
 
