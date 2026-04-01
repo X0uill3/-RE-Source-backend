@@ -1,9 +1,8 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface IComment extends Document {
-    content: StaticRange;
+    content: string;
     date: Date;
-    systemStatus: 'Enabled' | 'Disabled';
     authorId: mongoose.Schema.Types.ObjectId;
     ressourceId: mongoose.Schema.Types.ObjectId;
     commentId?: mongoose.Schema.Types.ObjectId;
@@ -18,11 +17,6 @@ const CommentSchema = new mongoose.Schema<IComment>({
     date: {
         type: Date,
         default: Date.now
-    },
-    systemStatus: {
-        type: String,
-        enum: ['Enabled', 'Disabled'],
-        default: 'Enabled'
     },
     authorId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -40,6 +34,14 @@ const CommentSchema = new mongoose.Schema<IComment>({
         default: null
     }
 
+});
+
+CommentSchema.pre('deleteOne', async function (next) {
+    const docToUpdate = await this.model.findOne(this.getQuery());
+    if (docToUpdate) {
+        await mongoose.model("Comment").deleteMany({ commentId: docToUpdate._id });
+    }
+    return;
 });
 
 const CommentModel: Model<IComment> = mongoose.model<IComment>("Comment", CommentSchema);

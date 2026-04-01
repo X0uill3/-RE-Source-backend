@@ -3,36 +3,11 @@ import User from '../models/User.js';
 import { GlobalRole } from '../constants/roles.js';
 
 /**
- * @desc Compte fantôme pour les articles d'auteurs supprimés (Sécurité RGPD)
- * @returns {Promise<Document>}
- */
-const getOrCreateGhostAccount = async () => {
-    const GHOST_EMAIL = 'anonyme@cesizen.fr';
-
-    let ghost = await User.findOne({ email: GHOST_EMAIL });
-
-    if (!ghost) {
-        ghost = await User.create({
-            email: GHOST_EMAIL,
-            password: Math.random().toString(36).slice(-10),
-            firstname: 'Compte',
-            lastname: 'Supprimé',
-            role: GlobalRole.USER,
-            systemStatus: 'Disabled'
-        });
-        console.log('👻 Compte fantôme créé à la volée !');
-    }
-
-    return ghost;
-};
-
-/**
  * @desc    Récupérer mon profil (Utilisateur connecté)
  * @route   GET /api/users/me
  */
 export const getMe = async (req: any, res: Response) => {
     try {
-        // L'utilisateur est déjà dans req.user grâce au middleware protect
         res.status(200).json({
             status: 'success',
             data: { user: req.user }
@@ -118,7 +93,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
  * @desc    Gérer un compte : changer rôle ou statut (Admin uniquement)
  * @route   PATCH /api/users/:id
  */
-export const updateUser = async (req: any, res: Response) => { // On utilise 'any' ou ton interface AuthRequest
+export const updateUser = async (req: any, res: Response) => {
     try {
         const user = await User.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
