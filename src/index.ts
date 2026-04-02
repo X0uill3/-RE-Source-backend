@@ -12,6 +12,7 @@ import typeRelationRoutes from './routes/typeRelationRoutes.js';
 import ressourceRoutes from './routes/ressourceRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
 import interactionRoutes from './routes/interactionRoutes.js'
+import { protect, softProtect } from './middleware/authMiddleware.js';
 
 
 dotenv.config();
@@ -21,6 +22,8 @@ const app: Application = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(softProtect);
 
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
