@@ -8,7 +8,7 @@ export interface IRessource extends Document {
   content?: string;
   picture?: string;
   systemStatus: "Enabled" | "Disabled";
-  visibility: "Public" | "Private";
+  visibility: "Public" | "Private" | "Restricted";
   createdAt: Date;
   updatedAt: Date;
   views: number;
@@ -33,7 +33,7 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
   },
   visibility: {
     type: String,
-    enum: ["Public", "Private"],
+    enum: ["Public", "Private", "Restricted"],
     default: "Public",
   },
   content: { type: String, required: false },

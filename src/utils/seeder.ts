@@ -80,13 +80,13 @@ const seedDatabase = async (): Promise<void> => {
         ] as any);
 
         await CategorieModel.insertMany([
-            { _id: ids.categoryPrevention, name: "Prevention", icon: "shield-alt", systemStatus: "Enabled" },
-            { _id: ids.categoryExercice, name: "Exercice", icon: "dumbbell", systemStatus: "Enabled" },
-            { _id: ids.categoryNutrition, name: "Nutrition", icon: "apple-alt", systemStatus: "Enabled" },
-            { _id: ids.categorySanteMentale, name: "Sante Mentale", icon: "brain", systemStatus: "Enabled" },
-            { _id: ids.categorySocial, name: "Social", icon: "users", systemStatus: "Enabled" },
-            { _id: ids.categoryLoisir, name: "Loisir", icon: "smile", systemStatus: "Enabled" },
-            { _id: ids.categoryCulture, name: "Culture", icon: "theater-masks", systemStatus: "Enabled" },
+            { _id: ids.categoryPrevention, name: "Prevention", icon: "shield-alt", systemStatus: "Enabled", color: "#FF5733" },
+            { _id: ids.categoryExercice, name: "Exercice", icon: "dumbbell", systemStatus: "Enabled", color: "#33FF57" },
+            { _id: ids.categoryNutrition, name: "Nutrition", icon: "apple-alt", systemStatus: "Enabled", color: "#5733FF" },
+            { _id: ids.categorySanteMentale, name: "Sante Mentale", icon: "brain", systemStatus: "Enabled", color: "#FF33A1" },
+            { _id: ids.categorySocial, name: "Social", icon: "users", systemStatus: "Enabled", color: "#33FFF0" },
+            { _id: ids.categoryLoisir, name: "Loisir", icon: "smile", systemStatus: "Enabled", color: "#F0FF33" },
+            { _id: ids.categoryCulture, name: "Culture", icon: "theater-masks", systemStatus: "Enabled", color: "#FF3366" },
         ] as any);
 
         await TypeRelationModel.insertMany([
