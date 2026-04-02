@@ -8,6 +8,7 @@ import {
   createResource,
   validateResource,
   startResource,
+  getPopularResources,
 } from "../controllers/ressourceController.js";
 import {
   protect,
@@ -21,6 +22,7 @@ router.use(softProtect);
 
 router.get("/", getAllResources);
 router.get("/restricted", getRestrictedResources);
+router.get("/popular", getPopularResources);
 router.get("/:id", getResource);
 
 router.use(protect);

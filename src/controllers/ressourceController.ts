@@ -54,6 +54,27 @@ export const getRestrictedResources = async (req: any, res: Response) => {
 };
 
 /**
+ * @desc Lister les ressources les + populaires (Citoyen)
+ * @route GET /api/resources/popular
+ */
+export const getPopularResources = async (req: Request, res: Response) => {
+  try {
+
+    const params = req.query;
+
+    const resources = await Resource.find({ systemStatus: "Enabled" })
+      .populate("userId", "firstname lastname")
+      .populate("categorie typeRelation")
+      .sort("-views")
+      .limit(params.limit ? Number(params.limit) : 10);
+
+    res.status(200).json({ status: "success", data: { resources } });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+/**
  * @desc    Afficher une ressource précise
  * @route   GET /api/resources/:id
  */
