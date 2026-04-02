@@ -5,6 +5,8 @@ export interface IRessource extends Document {
   userId: mongoose.Types.ObjectId;
   title: string;
   description: string;
+  content?: string;
+  picture?: string;
   systemStatus: "Enabled" | "Disabled";
   visibility: "Public" | "Private";
   createdAt: Date;
@@ -34,6 +36,8 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
     enum: ["Public", "Private"],
     default: "Public",
   },
+  content: { type: String, required: false },
+  picture: { type: String, required: false },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -3,6 +3,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface ICategorie extends Document {
     name: string;
     icon: string;
+    color: string;
     systemStatus: 'Enabled' | 'Disabled';
     createdAt: Date;
     updatedAt: Date;
@@ -11,6 +12,7 @@ export interface ICategorie extends Document {
 const CategorieSchema = new mongoose.Schema<ICategorie>({
     name: { type: String, required: true, trim: true },
     icon: { type: String, required: true, trim: true },
+    color: { type: String, required: true, trim: true },
     systemStatus: {
         type: String,
         enum: ['Enabled', 'Disabled'],
