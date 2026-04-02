@@ -12,7 +12,7 @@ export interface ICategorie extends Document {
 const CategorieSchema = new mongoose.Schema<ICategorie>({
     name: { type: String, required: true, trim: true },
     icon: { type: String, required: true, trim: true },
-    color: { type: String, required: true, trim: true },
+    color: { type: String, required: true, trim: true, default: "#000000" },
     systemStatus: {
         type: String,
         enum: ['Enabled', 'Disabled'],
