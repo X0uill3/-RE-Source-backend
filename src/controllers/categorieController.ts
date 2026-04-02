@@ -1,18 +1,24 @@
-import type { Request, Response } from 'express';
-import Categorie from '../models/Categorie.js';
+import type { Request, Response } from "express";
+import CategorieRepository from "../repositories/categorieRepository.js";
 
 /**
- * @desc    Récupérer toutes les catégories
+ * @desc    Récupérer toutes les catégories actives
  * @route   GET /api/categories
  * @access  Public
  */
 export const getAllCategories = async (req: Request, res: Response) => {
-    try {
-        const categories = await Categorie.find().sort('name').where('systemStatus').equals('Enabled');
-        res.status(200).json({ status: 'success', results: categories.length, data: { categories } });
-    } catch (error: any) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
+  try {
+    const categories = await CategorieRepository.findAll({
+      systemStatus: "Enabled",
+    });
+    res.status(200).json({
+      status: "success",
+      results: categories.length,
+      data: { categories },
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 };
 
 /**
@@ -21,12 +27,16 @@ export const getAllCategories = async (req: Request, res: Response) => {
  * @access  Privé (Admin)
  */
 export const getAllCategoriesAdmin = async (req: any, res: Response) => {
-    try {
-        const categories = await Categorie.find().sort('name');
-        res.status(200).json({ status: 'success', results: categories.length, data: { categories } });
-    } catch (error: any) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
+  try {
+    const categories = await CategorieRepository.findAll();
+    res.status(200).json({
+      status: "success",
+      results: categories.length,
+      data: { categories },
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 };
 
 /**
@@ -35,15 +45,23 @@ export const getAllCategoriesAdmin = async (req: any, res: Response) => {
  * @access  Public
  */
 export const getCategory = async (req: Request, res: Response) => {
-    try {
-        const category = await Categorie.findById(req.params.id).where('systemStatus').equals('Enabled');
-        if (!category) {
-            return res.status(404).json({ status: 'error', message: "Catégorie non trouvée" });
-        }
-        res.status(200).json({ status: 'success', data: { category } });
-    } catch (error: any) {
-        res.status(400).json({ status: 'error', message: "ID invalide ou erreur serveur" });
+  try {
+    const category = await CategorieRepository.findByIdAndStatus(
+      req.params.id as string,
+      "Enabled",
+    );
+
+    if (!category) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Catégorie non trouvée" });
     }
+    res.status(200).json({ status: "success", data: { category } });
+  } catch (error: any) {
+    res
+      .status(400)
+      .json({ status: "error", message: "ID invalide ou erreur serveur" });
+  }
 };
 
 /**
@@ -52,14 +70,15 @@ export const getCategory = async (req: Request, res: Response) => {
  * @access  Privé (Admin)
  */
 export const createCategory = async (req: any, res: Response) => {
-    try {
-        const { name } = req.body;
-        const newCategory = new Categorie({ name });
-        await newCategory.save();
-        res.status(201).json({ status: 'success', data: { category: newCategory } });
-    } catch (error: any) {
-        res.status(400).json({ status: 'error', message: error.message });
-    }
+  try {
+    const { name } = req.body;
+    const newCategory = await CategorieRepository.create(name);
+    res
+      .status(201)
+      .json({ status: "success", data: { category: newCategory } });
+  } catch (error: any) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
 };
 
 /**
@@ -68,18 +87,21 @@ export const createCategory = async (req: any, res: Response) => {
  * @access  Privé (Admin)
  */
 export const updateCategory = async (req: any, res: Response) => {
-    try {
-        const category = await Categorie.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
-        if (!category) {
-            return res.status(404).json({ status: 'error', message: "Catégorie non trouvée" });
-        }
-        res.status(200).json({ status: 'success', data: { category } });
-    } catch (error: any) {
-        res.status(400).json({ status: 'error', message: error.message });
+  try {
+    const category = await CategorieRepository.update(
+      req.params.id as string,
+      req.body,
+    );
+
+    if (!category) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Catégorie non trouvée" });
     }
+    res.status(200).json({ status: "success", data: { category } });
+  } catch (error: any) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
 };
 
 /**
@@ -88,17 +110,25 @@ export const updateCategory = async (req: any, res: Response) => {
  * @access Privé (Admin)
  * */
 export const disableCategory = async (req: any, res: Response) => {
-    try {
-        const category = await Categorie.findById(req.params.id).where('systemStatus').equals('Enabled');
-        if (!category) {
-            return res.status(404).json({ status: 'error', message: "Catégorie non trouvée" });
-        }
-        category.systemStatus = 'Disabled';
-        await category.save();
-        res.status(200).json({ status: 'success', data: { category } });
-    } catch (error: any) {
-        res.status(400).json({ status: 'error', message: error.message });
+  try {
+    const category = await CategorieRepository.findByIdAndStatus(
+      req.params.id as string,
+      "Enabled",
+    );
+
+    if (!category) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Catégorie non trouvée" });
     }
+
+    category.systemStatus = "Disabled";
+    await CategorieRepository.save(category);
+
+    res.status(200).json({ status: "success", data: { category } });
+  } catch (error: any) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
 };
 
 /**
@@ -107,15 +137,23 @@ export const disableCategory = async (req: any, res: Response) => {
  * @access Privé (Admin)
  * */
 export const enableCategory = async (req: any, res: Response) => {
-    try {
-        const category = await Categorie.findById(req.params.id).where('systemStatus').equals('Disabled');
-        if (!category) {
-            return res.status(404).json({ status: 'error', message: "Catégorie non trouvée" });
-        }
-        category.systemStatus = 'Enabled';
-        await category.save();
-        res.status(200).json({ status: 'success', data: { category } });
-    } catch (error: any) {
-        res.status(400).json({ status: 'error', message: error.message });
+  try {
+    const category = await CategorieRepository.findByIdAndStatus(
+      req.params.id as string,
+      "Disabled",
+    );
+
+    if (!category) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Catégorie non trouvée" });
     }
+
+    category.systemStatus = "Enabled";
+    await CategorieRepository.save(category);
+
+    res.status(200).json({ status: "success", data: { category } });
+  } catch (error: any) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
 };

@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import Resource from "../models/Ressource.js";
+import ResourceRepository from "../repositories/ressourceRepository.js";
 import { GlobalRole } from "../constants/roles.js";
 import { GlobalTypeRessource } from "../constants/typeRessource.js";
 
@@ -9,7 +9,6 @@ import { GlobalTypeRessource } from "../constants/typeRessource.js";
  */
 export const getAllResources = async (req: Request, res: Response) => {
   try {
-
     const { categorie, typeRessource, typeRelation, sort } = req.query;
 
     const query: any = {
@@ -21,10 +20,10 @@ export const getAllResources = async (req: Request, res: Response) => {
     if (typeRessource) query.typeRessource = typeRessource;
     if (typeRelation) query.typeRelation = typeRelation;
 
-    const resources = await Resource.find(query)
-      .populate("userId", "firstname lastname")
-      .populate("categorie typeRelation")
-      .sort(sort ? String(sort) : "-createdAt");
+    const resources = await ResourceRepository.findAll(
+      query,
+      sort ? String(sort) : "-createdAt",
+    );
 
     res.status(200).json({
       status: "success",
@@ -42,10 +41,13 @@ export const getAllResources = async (req: Request, res: Response) => {
  */
 export const getRestrictedResources = async (req: any, res: Response) => {
   try {
-    const resources = await Resource.find({ systemStatus: "Enabled" })
-      .populate("userId", "firstname lastname")
-      .populate("categorie typeRelation")
-      .sort("-createdAt");
+    const query = {
+      systemStatus: "Enabled",
+      visibility: "Restricted",
+    };
+
+    const sort = "-createdAt";
+    const resources = await ResourceRepository.findAll(query, sort);
 
     res.status(200).json({ status: "success", data: { resources } });
   } catch (error: any) {
@@ -59,15 +61,8 @@ export const getRestrictedResources = async (req: any, res: Response) => {
  */
 export const getPopularResources = async (req: Request, res: Response) => {
   try {
-
-    const params = req.query;
-
-    const resources = await Resource.find({ systemStatus: "Enabled" })
-      .populate("userId", "firstname lastname")
-      .populate("categorie typeRelation")
-      .sort("-views")
-      .limit(params.limit ? Number(params.limit) : 10);
-
+    const limit = req.query.limit ? Number(req.query.limit) : 10;
+    const resources = await ResourceRepository.findPopular(limit);
     res.status(200).json({ status: "success", data: { resources } });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: error.message });
@@ -80,15 +75,13 @@ export const getPopularResources = async (req: Request, res: Response) => {
  */
 export const getResource = async (req: Request, res: Response) => {
   try {
-    const resource = await Resource.findById(req.params.id)
-      .populate("userId", "firstname lastname")
-      .populate("categorie typeRelation");
+    const resource = await ResourceRepository.findById(req.params.id as string);
 
     if (!resource)
       return res.status(404).json({ message: "Ressource non trouvée" });
 
     resource.views += 1;
-    await resource.save();
+    await ResourceRepository.save(resource);
 
     res.status(200).json({ status: "success", data: { resource } });
   } catch (error: any) {
@@ -103,14 +96,9 @@ export const getResource = async (req: Request, res: Response) => {
 export const createResource = async (req: any, res: Response) => {
   try {
     const status = req.user.role === GlobalRole.ADMIN ? "Enabled" : "Disabled";
+    const data = { ...req.body, userId: req.user._id, systemStatus: status };
 
-    const data = {
-      ...req.body,
-      userId: req.user._id,
-      systemStatus: status,
-    };
-
-    const resource = await Resource.create(data);
+    const resource = await ResourceRepository.create(data);
 
     res.status(201).json({ status: "success", data: { resource } });
   } catch (error: any) {
@@ -124,32 +112,27 @@ export const createResource = async (req: any, res: Response) => {
  */
 export const updateResource = async (req: any, res: Response) => {
   try {
-    const resourceToUpdate = await Resource.findById(req.params.id);
+    const resourceToUpdate = await ResourceRepository.findById(
+      req.params.id as string,
+    );
 
-    if (!resourceToUpdate) {
+    if (!resourceToUpdate)
       return res.status(404).json({ message: "Ressource non trouvée" });
-    }
 
     if (
       resourceToUpdate.userId.toString() !== req.user._id.toString() &&
       req.user.role !== GlobalRole.ADMIN
     ) {
-      return res.status(403).json({
-        message: "Vous n'avez pas l'autorisation de modifier cette ressource",
-      });
+      return res.status(403).json({ message: "Autorisation refusée" });
     }
 
     const updateData = { ...req.body, updatedAt: Date.now() };
-
-    // Sécurité : Un citoyen ne peut pas s'auto-valider en modifiant
-    if (req.user.role !== GlobalRole.ADMIN) {
+    if (req.user.role !== GlobalRole.ADMIN)
       updateData.systemStatus = "Disabled";
-    }
 
-    const resource = await Resource.findByIdAndUpdate(
-      req.params.id,
+    const resource = await ResourceRepository.update(
+      req.params.id as string,
       updateData,
-      { new: true, runValidators: true },
     );
 
     res.status(200).json({ status: "success", data: { resource } });
@@ -164,11 +147,10 @@ export const updateResource = async (req: any, res: Response) => {
  */
 export const validateResource = async (req: Request, res: Response) => {
   try {
-    const resource = await Resource.findByIdAndUpdate(
-      req.params.id,
-      { systemStatus: "Enabled", updatedAt: Date.now() },
-      { new: true },
-    );
+    const resource = await ResourceRepository.update(req.params.id as string, {
+      systemStatus: "Enabled",
+      updatedAt: new Date(),
+    });
 
     if (!resource)
       return res.status(404).json({ message: "Ressource non trouvée" });
@@ -185,11 +167,9 @@ export const validateResource = async (req: Request, res: Response) => {
  */
 export const deleteResource = async (req: Request, res: Response) => {
   try {
-    const resource = await Resource.findByIdAndUpdate(
-      req.params.id,
-      { systemStatus: "Disabled" },
-      { new: true },
-    );
+    const resource = await ResourceRepository.update(req.params.id as string, {
+      systemStatus: "Disabled",
+    });
 
     if (!resource)
       return res.status(404).json({ message: "Ressource non trouvée" });
@@ -199,17 +179,17 @@ export const deleteResource = async (req: Request, res: Response) => {
     res.status(400).json({ status: "error", message: error.message });
   }
 };
+
 /**
  * @desc    Démarrer une ressource de type Activité/Jeu
  * @route   PATCH /api/resources/:id/start
  */
 export const startResource = async (req: Request, res: Response) => {
   try {
-    const resource = await Resource.findById(req.params.id);
+    const resource = await ResourceRepository.findById(req.params.id as string);
 
-    if (!resource) {
+    if (!resource)
       return res.status(404).json({ message: "Ressource non trouvée" });
-    }
 
     const playableTypes = [
       GlobalTypeRessource.GAME,
@@ -217,23 +197,97 @@ export const startResource = async (req: Request, res: Response) => {
     ];
 
     if (!playableTypes.includes(resource.typeRessource)) {
-      return res.status(400).json({
-        message:
-          "Cette ressource n'est pas de type Jeu ou Activité et ne peut pas être démarrée.",
-      });
+      return res
+        .status(400)
+        .json({ message: "Type de ressource non démarrable." });
     }
 
-    resource.start = true;
+    resource.start = false;
     resource.updatedAt = new Date();
+    await ResourceRepository.save(resource);
 
-    await resource.save();
+    res.status(200).json({ status: "success", data: { resource } });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
 
+/**
+ * @desc    Arrêter une ressource de type Activité/Jeu
+ * @route   PATCH /api/resources/:id/stop
+ */
+export const stopResource = async (req: Request, res: Response) => {
+  try {
+    const resource = await ResourceRepository.findById(req.params.id as string);
+
+    if (!resource)
+      return res.status(404).json({ message: "Ressource non trouvée" });
+
+    const playableTypes = [
+      GlobalTypeRessource.GAME,
+      GlobalTypeRessource.ACTIVITY,
+    ];
+
+    if (!playableTypes.includes(resource.typeRessource)) {
+      return res
+        .status(400)
+        .json({ message: "Type de ressource non arrêtable." });
+    }
+
+    resource.start = false;
+    resource.updatedAt = new Date();
+    await ResourceRepository.save(resource);
+
+    res.status(200).json({ status: "success", data: { resource } });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+/**
+ * @desc    Récupérer les ressources d'un utilisateur
+ * @route   GET /api/resources/user/:id
+ * @access  Privé (Admin ou propriétaire des ressources)
+ */
+export const getUserResources = async (req: any, res: Response) => {
+  try {
+    const userId = req.params.id as string;
+    if (
+      userId !== req.user._id.toString() &&
+      req.user.role !== GlobalRole.ADMIN
+    ) {
+      return res.status(403).json({
+        status: "error",
+        message: "Non autorisé à accéder aux ressources de cet utilisateur",
+      });
+    }
+    const resources = await ResourceRepository.findByUserId(userId);
     res.status(200).json({
       status: "success",
-      message: "La ressource a été démarrée",
-      data: { resource },
+      results: resources.length,
+      data: { resources },
     });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+/**
+ * @desc    Réactiver une ressource désactivée (Admin)
+ * @route   PATCH /api/resources/:id/enable
+ */
+export const enableResource = async (req: Request, res: Response) => {
+  try {
+    const resource = await ResourceRepository.update(req.params.id as string, {
+      systemStatus: "Enabled",
+      updatedAt: new Date(),
+    });
+
+    if (!resource)
+      return res.status(404).json({ message: "Ressource non trouvée" });
+
+    res.status(200).json({ status: "success", data: { resource } });
+  } catch (error: any) {
+    res.status(400).json({ status: "error", message: error.message });
   }
 };
