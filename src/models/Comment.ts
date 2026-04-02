@@ -3,9 +3,9 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface IComment extends Document {
     content: string;
     date: Date;
-    authorId: mongoose.Schema.Types.ObjectId;
-    ressourceId: mongoose.Schema.Types.ObjectId;
-    commentId?: mongoose.Schema.Types.ObjectId;
+    authorId: mongoose.Types.ObjectId;
+    ressourceId: mongoose.Types.ObjectId;
+    commentId?: mongoose.Types.ObjectId;
 }
 
 const CommentSchema = new mongoose.Schema<IComment>({
@@ -19,17 +19,17 @@ const CommentSchema = new mongoose.Schema<IComment>({
         default: Date.now
     },
     authorId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Types.ObjectId,
         ref: 'User',
         required: true
     },
     ressourceId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Types.ObjectId,
         ref: 'Ressource',
         required: true
     },
     commentId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Types.ObjectId,
         ref: 'Comment',
         default: null
     }

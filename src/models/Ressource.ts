@@ -2,7 +2,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 import { GlobalTypeRessource } from "../constants/typeRessource.js";
 
 export interface IRessource extends Document {
-  userId: mongoose.Schema.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   title: string;
   description: string;
   systemStatus: "Enabled" | "Disabled";
@@ -11,15 +11,15 @@ export interface IRessource extends Document {
   updatedAt: Date;
   views: number;
   path_media: string;
-  categorie: mongoose.Schema.Types.ObjectId;
+  categorie: mongoose.Types.ObjectId;
   typeRessource: GlobalTypeRessource;
-  typeRelation: mongoose.Schema.Types.ObjectId;
+  typeRelation: mongoose.Types.ObjectId;
   start: boolean;
 }
 
 const RessourceSchema = new mongoose.Schema<IRessource>({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Types.ObjectId,
     ref: "User",
   },
   title: { type: String, required: true, trim: true },
@@ -52,7 +52,7 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
     default: "",
   },
   categorie: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Types.ObjectId,
     ref: "Categorie",
   },
   typeRessource: {
@@ -60,7 +60,7 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
     enum: Object.values(GlobalTypeRessource),
   },
   typeRelation: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Types.ObjectId,
     ref: "TypeRelation",
   },
   start: {
