@@ -22,7 +22,7 @@ export const getAllTypeRelation = async (req: Request, res: Response) => {
  */
 export const getTypeRelation = async (req: Request, res: Response) => {
     try {
-        const typeRelation = await TypeRelation.find({ _id: req.params.id as any, systemStatus: "Enabled" });
+        const typeRelation = await TypeRelation.findById(req.params.id);
         if (!typeRelation) {
             return res.status(404).json({ status: "error", message: "Type de relation non trouvé" });
         }

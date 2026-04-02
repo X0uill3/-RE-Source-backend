@@ -1,5 +1,6 @@
 import request from "supertest";
 import mongoose from "mongoose";
+import { jest } from "@jest/globals";
 import app from "../../index.js";
 import User from "../../models/User.js";
 
@@ -89,6 +90,41 @@ describe("Auth System Integration Tests", () => {
       expect(res.body.message).toMatch(
         "Veuillez fournir un email et un mot de passe",
       );
+    });
+
+    it("doit renvoyer une 400 si le login crash (catch)", async () => {
+      const spy = jest.spyOn(User, "findOne").mockImplementationOnce(() => {
+        throw new Error("Login DB Crash");
+      });
+
+      const res = await request(app).post("/api/auth/login").send({
+        email: newUser.email,
+        password: newUser.password,
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Login DB Crash");
+      spy.mockRestore();
+    });
+  });
+
+  describe("SignToken Security", () => {
+    it("doit jeter une erreur si JWT_SECRET n'est pas défini", async () => {
+      const originalSecret = process.env.JWT_SECRET;
+      delete process.env.JWT_SECRET;
+
+      const res = await request(app).post("/api/auth/signup").send({
+        firstname: "No",
+        lastname: "Secret",
+        email: "nosecret@test.fr",
+        password: "password123",
+        birthdate: "2000-01-01",
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/JWT_SECRET n'est pas définie/);
+
+      process.env.JWT_SECRET = originalSecret; // Toujours restaurer !
     });
   });
 });

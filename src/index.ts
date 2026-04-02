@@ -31,7 +31,6 @@ app.use("/api/resources", ressourceRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/interactions", interactionRoutes);
 
-// Ajoute bien les types ici pour que res.send() soit reconnu
 app.get("/", (req: Request, res: Response) => {
   res.send("API Ressource Backend est en cours d'exécution");
 });
