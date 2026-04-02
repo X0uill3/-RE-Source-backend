@@ -25,7 +25,7 @@ export const addComment = async (req: any, res: Response) => {
     try {
         const { content, ressourceId } = req.body;
         const newComment = new Comment({
-            UserId: req.user._id,
+            authorId: req.user._id,
             content,
             ressourceId,
             commentId: req.body.commentId?.toString() || null

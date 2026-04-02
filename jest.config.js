@@ -2,6 +2,7 @@
 export default {
   preset: "ts-jest/presets/default-esm", // Utilise le preset spécifique ESM
   testEnvironment: "node",
+  testTimeout: 30000,
   extensionsToTreatAsEsm: [".ts"],
   moduleNameMapper: {
     // C'est ici qu'on gère tes imports qui finissent en .js

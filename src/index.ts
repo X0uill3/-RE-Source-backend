@@ -15,7 +15,6 @@ import interactionRoutes from "./routes/interactionRoutes.js";
 import { protect, softProtect } from "./middleware/authMiddleware.js";
 
 dotenv.config();
-connectDB();
 
 const app: Application = express();
 
@@ -34,15 +33,15 @@ app.use("/api/interactions", interactionRoutes);
 
 // Ajoute bien les types ici pour que res.send() soit reconnu
 app.get("/", (req: Request, res: Response) => {
-    res.send("API Ressource Backend est en cours d'exécution");
+  res.send("API Ressource Backend est en cours d'exécution");
 });
 
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== "test") {
-    connectDB();
-    app.listen(PORT, () => {
-        console.log(`✅ Serveur démarré sur le port ${PORT}`);
-    });
+  connectDB();
+  app.listen(PORT, () => {
+    console.log(`✅ Serveur démarré sur le port ${PORT}`);
+  });
 }
 
 export default app; // Export de l'app pour les tests d'intégration

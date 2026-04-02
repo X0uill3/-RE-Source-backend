@@ -79,5 +79,16 @@ describe("Auth System Integration Tests", () => {
 
       expect(res.status).toBe(403);
     });
+
+    it("doit échouer si l'email ou le mot de passe est manquant", async () => {
+      const res = await request(app)
+        .post("/api/auth/login")
+        .send({ email: "test@test.fr" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(
+        "Veuillez fournir un email et un mot de passe",
+      );
+    });
   });
 });
