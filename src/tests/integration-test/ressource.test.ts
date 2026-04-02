@@ -378,4 +378,77 @@ describe("Resource Controller Integration Tests", () => {
       spy.mockRestore();
     });
   });
+
+  describe("GET /api/resources/popular", () => {
+    beforeAll(async () => {
+      // On s'assure d'avoir plusieurs ressources avec des nombres de vues différents
+      await Resource.create([
+        {
+          title: "Pop 1",
+          description: "Desc",
+          userId: userId,
+          categorie: categoryId,
+          systemStatus: "Enabled",
+          visibility: "Public",
+          typeRessource: GlobalTypeRessource.GAME,
+          views: 100,
+        },
+        {
+          title: "Pop 2",
+          description: "Desc",
+          userId: userId,
+          categorie: categoryId,
+          systemStatus: "Enabled",
+          visibility: "Public",
+          typeRessource: GlobalTypeRessource.GAME,
+          views: 500,
+        },
+      ]);
+    });
+
+    it("doit lister les ressources les plus populaires (triées par vues décroissantes)", async () => {
+      const res = await request(app).get("/api/resources/popular");
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("success");
+      expect(Array.isArray(res.body.data.resources)).toBe(true);
+
+      // Vérification du tri : la première ressource doit avoir plus de vues que la seconde
+      const resources = res.body.data.resources;
+      if (resources.length >= 2) {
+        expect(resources[0].views).toBeGreaterThanOrEqual(resources[1].views);
+      }
+    });
+
+    it("doit respecter le paramètre de limite s'il est fourni", async () => {
+      const limit = 1;
+      const res = await request(app).get(
+        `/api/resources/popular?limit=${limit}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.resources.length).toBeLessThanOrEqual(limit);
+    });
+
+    it("doit renvoyer 500 si la récupération des populaires crash (catch)", async () => {
+      // On mock la méthode find de Resource
+      const spy = jest.spyOn(Resource, "find").mockImplementationOnce(() => {
+        return {
+          populate: jest.fn().mockReturnThis(),
+          sort: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockImplementationOnce(() => {
+            throw new Error("Popular Crash");
+          }),
+        } as any;
+      });
+
+      const res = await request(app).get("/api/resources/popular");
+
+      expect(res.status).toBe(500);
+      expect(res.body.status).toBe("error");
+      expect(res.body.message).toBe("Popular Crash");
+
+      spy.mockRestore();
+    });
+  });
 });
