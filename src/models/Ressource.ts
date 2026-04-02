@@ -19,7 +19,7 @@ export interface IRessource extends Document {
 
 const RessourceSchema = new mongoose.Schema<IRessource>({
   userId: {
-    type: mongoose.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
   title: { type: String, required: true, trim: true },
@@ -52,7 +52,7 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
     default: "",
   },
   categorie: {
-    type: mongoose.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Categorie",
   },
   typeRessource: {
@@ -60,7 +60,7 @@ const RessourceSchema = new mongoose.Schema<IRessource>({
     enum: Object.values(GlobalTypeRessource),
   },
   typeRelation: {
-    type: mongoose.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "TypeRelation",
   },
   start: {

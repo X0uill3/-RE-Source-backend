@@ -2,11 +2,11 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 import { RessourceInteractionType } from "../constants/interactions.js";
 
 export interface IInteraction extends Document {
-    UserId: mongoose.Schema.Types.ObjectId;
+    UserId: mongoose.Types.ObjectId;
     date: Date;
     interactionType: RessourceInteractionType;
-    ressourceId: mongoose.Schema.Types.ObjectId;
-    ReceiverId?: mongoose.Schema.Types.ObjectId;
+    ressourceId: mongoose.Types.ObjectId;
+    ReceiverId?: mongoose.Types.ObjectId;
 }
 
 

@@ -41,15 +41,15 @@ const seedDatabase = async (): Promise<void> => {
             commentReply: new mongoose.Types.ObjectId(),
         };
 
-        const adminPasswordHash = await bcrypt.hash("Admin123!", 10);
-        const userPasswordHash = await bcrypt.hash("User123!", 10);
+        const adminPasswordHash = await bcrypt.hash("password123", 10);
+        const userPasswordHash = await bcrypt.hash("password123", 10);
 
         await UserModel.insertMany([
             {
                 _id: ids.adminUser,
                 firstname: "Admin",
                 lastname: "ReSource",
-                email: "admin@resource.local",
+                email: "admin@test.fr",
                 password: adminPasswordHash,
                 role: GlobalRole.ADMIN,
                 systemStatus: "Enabled",
@@ -58,7 +58,7 @@ const seedDatabase = async (): Promise<void> => {
                 _id: ids.standardUser,
                 firstname: "Alice",
                 lastname: "Martin",
-                email: "alice@resource.local",
+                email: "alice@test.fr",
                 password: userPasswordHash,
                 role: GlobalRole.USER,
                 systemStatus: "Enabled",
@@ -154,8 +154,8 @@ const seedDatabase = async (): Promise<void> => {
 
         console.log("Seed termine avec succes.");
         console.log("Comptes de test:");
-        console.log("- admin@resource.local / Admin123!");
-        console.log("- alice@resource.local / User123!");
+        console.log("- admin@test.fr / password123");
+        console.log("- alice@test.fr / password123");
 
         process.exit(0);
     } catch (error) {

@@ -19,17 +19,17 @@ const CommentSchema = new mongoose.Schema<IComment>({
         default: Date.now
     },
     authorId: {
-        type: mongoose.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
     ressourceId: {
-        type: mongoose.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Ressource',
         required: true
     },
     commentId: {
-        type: mongoose.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Comment',
         default: null
     }
