@@ -2,9 +2,9 @@ import request from "supertest";
 import mongoose from "mongoose";
 import app from "../../index.js";
 import Interaction from "../../models/Interaction.js";
+import InteractionRepository from "../../repositories/interactionRepository.js"; // Import du Repository
 import User from "../../models/User.js";
 import { RessourceInteractionType } from "../../constants/interactions.js";
-import { GlobalRole } from "../../constants/roles.js";
 import { jest } from "@jest/globals";
 
 describe("Interaction Controller Integration Tests", () => {
@@ -31,13 +31,17 @@ describe("Interaction Controller Integration Tests", () => {
     // 2. ID de ressource fictif
     ressourceId = new mongoose.Types.ObjectId().toString();
 
-    // 3. Création d'une interaction initiale
-    const inter = await Interaction.create({
-      UserId: new mongoose.Types.ObjectId(userId),
+    // 3. Création d'une interaction initiale via le repository
+    const inter = await InteractionRepository.create({
+      UserId: new mongoose.Types.ObjectId(userId) as any,
       interactionType: RessourceInteractionType.VIEW,
-      ressourceId: new mongoose.Types.ObjectId(ressourceId),
+      ressourceId: new mongoose.Types.ObjectId(ressourceId) as any,
     });
     testInteractionId = (inter as any)._id.toString();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(async () => {
@@ -45,7 +49,7 @@ describe("Interaction Controller Integration Tests", () => {
   });
 
   describe("POST /api/interactions", () => {
-    it("doit enregistrer une nouvelle interaction avec succès", async () => {
+    it("doit enregistrer une nouvelle interaction avec succès via Repository", async () => {
       const res = await request(app)
         .post("/api/interactions")
         .set("Authorization", `Bearer ${userToken}`)
@@ -60,44 +64,52 @@ describe("Interaction Controller Integration Tests", () => {
       );
     });
 
-    it("doit retourner une 400 si les données sont invalides (ex: type inconnu)", async () => {
+    it("doit retourner une 400 si InteractionRepository.create crash (ex: validation)", async () => {
+      const spy = jest
+        .spyOn(InteractionRepository, "create")
+        .mockImplementationOnce(() => {
+          throw new Error("Validation Error");
+        });
+
       const res = await request(app)
         .post("/api/interactions")
         .set("Authorization", `Bearer ${userToken}`)
         .send({
-          interactionType: "INVALID_TYPE",
+          interactionType: "INVALID",
           ressourceId: ressourceId,
         });
 
       expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Validation Error");
     });
   });
 
-  describe("GET /api/interactions/user", () => {
-    it("doit récupérer les interactions de l'utilisateur connecté", async () => {
+  describe("GET /api/interactions", () => {
+    it("doit récupérer les interactions de l'utilisateur connecté via Repository", async () => {
       const res = await request(app)
         .get("/api/interactions/user")
         .set("Authorization", `Bearer ${userToken}`);
-
       expect(res.status).toBe(200);
       expect(res.body.results).toBeGreaterThanOrEqual(1);
     });
 
-    it("doit renvoyer une 500 si la récupération crash", async () => {
-      const spy = jest.spyOn(Interaction, "find").mockImplementationOnce(() => {
-        throw new Error("Find Error");
-      });
+    it("doit renvoyer une 500 si findByUserId crash", async () => {
+      const spy = jest
+        .spyOn(InteractionRepository, "findByUserId")
+        .mockImplementationOnce(() => {
+          throw new Error("Find Error");
+        });
       const res = await request(app)
         .get("/api/interactions/user")
         .set("Authorization", `Bearer ${userToken}`);
 
       expect(res.status).toBe(500);
-      spy.mockRestore();
+      expect(res.body.message).toBe("Find Error");
     });
   });
 
   describe("GET /api/interactions/ressource/:id", () => {
-    it("doit récupérer les interactions d'une ressource spécifique", async () => {
+    it("doit récupérer les interactions d'une ressource via Repository", async () => {
       const res = await request(app)
         .get(`/api/interactions/ressource/${ressourceId}`)
         .set("Authorization", `Bearer ${userToken}`);
@@ -106,21 +118,22 @@ describe("Interaction Controller Integration Tests", () => {
       expect(res.body.status).toBe("success");
     });
 
-    it("doit renvoyer une 500 si la recherche par ressource crash", async () => {
-      const spy = jest.spyOn(Interaction, "find").mockImplementationOnce(() => {
-        throw new Error("Resource Find Error");
-      });
+    it("doit renvoyer une 500 si findByResourceId crash", async () => {
+      const spy = jest
+        .spyOn(InteractionRepository, "findByResourceId")
+        .mockImplementationOnce(() => {
+          throw new Error("Resource Find Error");
+        });
       const res = await request(app)
         .get(`/api/interactions/ressource/${ressourceId}`)
         .set("Authorization", `Bearer ${userToken}`);
 
       expect(res.status).toBe(500);
-      spy.mockRestore();
     });
   });
 
   describe("DELETE /api/interactions/:id", () => {
-    it("doit supprimer une interaction appartenant à l'utilisateur", async () => {
+    it("doit supprimer une interaction appartenant à l'utilisateur via Repository", async () => {
       const res = await request(app)
         .delete(`/api/interactions/${testInteractionId}`)
         .set("Authorization", `Bearer ${userToken}`);
@@ -129,7 +142,7 @@ describe("Interaction Controller Integration Tests", () => {
       expect(res.body.message).toBe("Interaction supprimée");
     });
 
-    it("doit retourner une 404 si l'interaction n'existe pas ou n'appartient pas à l'utilisateur", async () => {
+    it("doit retourner une 404 si le Repository ne trouve pas l'interaction", async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const res = await request(app)
         .delete(`/api/interactions/${fakeId}`)
@@ -139,18 +152,19 @@ describe("Interaction Controller Integration Tests", () => {
       expect(res.body.message).toBe("Interaction non trouvée");
     });
 
-    it("doit renvoyer une 500 en cas d'erreur serveur lors de la suppression", async () => {
+    it("doit renvoyer une 500 si deleteUserInteraction crash", async () => {
       const spy = jest
-        .spyOn(Interaction, "findOneAndDelete")
+        .spyOn(InteractionRepository, "deleteUserInteraction")
         .mockImplementationOnce(() => {
-          throw new Error("Delete Error");
+          throw new Error("Delete Repository Error");
         });
+
       const res = await request(app)
         .delete(`/api/interactions/${testInteractionId}`)
         .set("Authorization", `Bearer ${userToken}`);
 
       expect(res.status).toBe(500);
-      spy.mockRestore();
+      expect(res.body.message).toBe("Delete Repository Error");
     });
   });
 });

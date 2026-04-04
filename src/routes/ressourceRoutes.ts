@@ -9,6 +9,8 @@ import {
   validateResource,
   startResource,
   getPopularResources,
+  stopResource,
+  getUserResources,
 } from "../controllers/ressourceController.js";
 import {
   protect,
@@ -28,6 +30,7 @@ router.get("/:id", getResource);
 router.use(protect);
 
 router.patch("/:id/start", startResource);
+router.patch("/:id/stop", stopResource);
 router.patch("/:id", updateResource);
 router.post("/", createResource);
 
@@ -37,5 +40,6 @@ router.patch(
   validateResource,
 );
 router.delete("/:id", checkRole([GlobalRole.ADMIN]), deleteResource);
+router.get("/user/:id", getUserResources);
 
 export default router;

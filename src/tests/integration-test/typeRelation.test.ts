@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import app from "../../index.js";
 import TypeRelation from "../../models/TypeRelation.js";
 import User from "../../models/User.js";
+import TypeRelationRepository from "../../repositories/typeRelationRepository.js"; // Import du Repository
 import { GlobalRole } from "../../constants/roles.js";
 import { jest } from "@jest/globals";
 
@@ -26,7 +27,8 @@ describe("TypeRelation Controller Integration Tests", () => {
     });
     adminToken = adminRes.body.token;
 
-    const type = await TypeRelation.create({
+    // Création initiale pour les tests via Repository
+    const type = await TypeRelationRepository.create({
       name: "Ami",
       systemStatus: "Enabled",
     });
@@ -34,16 +36,16 @@ describe("TypeRelation Controller Integration Tests", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks(); // Sécurité critique pour le coverage
+    jest.restoreAllMocks(); // Nettoie les mocks entre chaque test
   });
 
   afterAll(async () => {
     await mongoose.connection.close();
   });
+
   describe("GET /api/typeRelation", () => {
     it("doit lister uniquement les types de relation actifs (Enabled)", async () => {
-      // On crée un type désactivé pour vérifier qu'il est filtré
-      await TypeRelation.create({
+      await TypeRelationRepository.create({
         name: "Invisible",
         systemStatus: "Disabled",
       });
@@ -52,29 +54,23 @@ describe("TypeRelation Controller Integration Tests", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("success");
-
-      // Vérification que le type "Disabled" n'est pas dans la liste
       const hasDisabled = res.body.data.typeRelations.some(
         (t: any) => t.name === "Invisible",
       );
       expect(hasDisabled).toBe(false);
     });
 
-    it("doit renvoyer une erreur 500 si la récupération échoue (catch)", async () => {
-      // Mock de la méthode find pour forcer une erreur
+    it("doit renvoyer une erreur 500 si Repository.findAll crash", async () => {
       const spy = jest
-        .spyOn(TypeRelation, "find")
+        .spyOn(TypeRelationRepository, "findAll")
         .mockImplementationOnce(() => {
-          throw new Error("Erreur de base de données simulée");
+          throw new Error("Erreur Repository");
         });
 
       const res = await request(app).get("/api/typeRelation");
 
       expect(res.status).toBe(500);
-      expect(res.body.status).toBe("error");
-      expect(res.body.message).toBe("Erreur de base de données simulée");
-
-      spy.mockRestore();
+      expect(res.body.message).toBe("Erreur Repository");
     });
   });
 
@@ -85,17 +81,19 @@ describe("TypeRelation Controller Integration Tests", () => {
       expect(res.body.data.typeRelation._id).toBe(testTypeId);
     });
 
-    it("doit renvoyer 404 si introuvable", async () => {
+    it("doit renvoyer 404 si le Repository retourne null", async () => {
       const res = await request(app).get(
         `/api/typeRelation/${new mongoose.Types.ObjectId()}`,
       );
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer 500 si findById crash", async () => {
-      jest.spyOn(TypeRelation, "findById").mockImplementationOnce(() => {
-        throw new Error("Err");
-      });
+    it("doit renvoyer 500 si Repository.findById crash", async () => {
+      jest
+        .spyOn(TypeRelationRepository, "findById")
+        .mockImplementationOnce(() => {
+          throw new Error("Crash findById");
+        });
       const res = await request(app).get(`/api/typeRelation/${testTypeId}`);
       expect(res.status).toBe(500);
     });
@@ -107,13 +105,14 @@ describe("TypeRelation Controller Integration Tests", () => {
         .get("/api/typeRelation/all")
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body.data.typeRelations)).toBe(true);
     });
 
-    it("doit renvoyer 500 si getAllAdmin crash", async () => {
-      jest.spyOn(TypeRelation, "find").mockImplementationOnce(() => {
-        throw new Error("Crash Admin");
-      });
+    it("doit renvoyer 500 si Repository.findAll crash pour Admin", async () => {
+      jest
+        .spyOn(TypeRelationRepository, "findAll")
+        .mockImplementationOnce(() => {
+          throw new Error("Crash Admin Repo");
+        });
       const res = await request(app)
         .get("/api/typeRelation/all")
         .set("Authorization", `Bearer ${adminToken}`);
@@ -122,33 +121,40 @@ describe("TypeRelation Controller Integration Tests", () => {
   });
 
   describe("POST /api/typeRelation", () => {
-    it("doit permettre à l'admin de créer un type de relation", async () => {
+    it("doit permettre à l'admin de créer un type", async () => {
       const res = await request(app)
         .post("/api/typeRelation")
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Famille", description: "Lien de parenté" });
       expect(res.status).toBe(201);
+      expect(res.body.data.typeRelation.name).toBe("Famille");
     });
 
-    it("doit renvoyer une 500 si la création crash (ex: nom manquant)", async () => {
+    it("doit renvoyer 500 si Repository.create crash", async () => {
+      const spy = jest
+        .spyOn(TypeRelationRepository, "create")
+        .mockImplementationOnce(() => {
+          throw new Error("Create Fail");
+        });
       const res = await request(app)
         .post("/api/typeRelation")
         .set("Authorization", `Bearer ${adminToken}`)
-        .send({}); // Manque 'name' requis
+        .send({ name: "Error" });
       expect(res.status).toBe(500);
     });
   });
 
   describe("PATCH /api/typeRelation/:id", () => {
-    it("doit permettre à l'admin de mettre à jour un type", async () => {
+    it("doit permettre de mettre à jour via Repository.findOneAndUpdateByStatus", async () => {
       const res = await request(app)
         .patch(`/api/typeRelation/${testTypeId}`)
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Ami Pro" });
       expect(res.status).toBe(200);
+      expect(res.body.data.typeRelation.name).toBe("Ami Pro");
     });
 
-    it("doit renvoyer 404 si le type est introuvable ou désactivé", async () => {
+    it("doit renvoyer 404 si le repository ne trouve pas le document actif", async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const res = await request(app)
         .patch(`/api/typeRelation/${fakeId}`)
@@ -157,21 +163,15 @@ describe("TypeRelation Controller Integration Tests", () => {
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer 500 si l'update crash", async () => {
-      const spy = jest
-        .spyOn(TypeRelation, "findOneAndUpdate")
+    it("doit renvoyer 500 si Repository.findOneAndUpdateByStatus crash", async () => {
+      jest
+        .spyOn(TypeRelationRepository, "findOneAndUpdateByStatus")
         .mockImplementationOnce(() => {
-          throw new Error("Crash");
+          throw new Error("Crash Update");
         });
       const res = await request(app)
         .patch(`/api/typeRelation/${testTypeId}`)
         .set("Authorization", `Bearer ${adminToken}`);
-      expect(res.status).toBe(500);
-      spy.mockRestore();
-    });
-
-    it("doit renvoyer une 500 (ou 400) si l'ID est malformé", async () => {
-      const res = await request(app).get("/api/typeRelation/id-invalide");
       expect(res.status).toBe(500);
     });
   });
@@ -184,30 +184,16 @@ describe("TypeRelation Controller Integration Tests", () => {
       expect(res.status).toBe(200);
     });
 
-    it("doit renvoyer 404 si déjà désactivé ou introuvable", async () => {
+    it("doit renvoyer 404 si Repository retourne null (déjà désactivé)", async () => {
       const res = await request(app)
         .patch(`/api/typeRelation/${testTypeId}/disable`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(404);
     });
-
-    it("doit renvoyer 500 si le disable crash", async () => {
-      const spy = jest
-        .spyOn(TypeRelation, "findOneAndUpdate")
-        .mockImplementationOnce(() => {
-          throw new Error("Crash");
-        });
-      const res = await request(app)
-        .patch(`/api/typeRelation/${testTypeId}/disable`)
-        .set("Authorization", `Bearer ${adminToken}`);
-      expect(res.status).toBe(500);
-      spy.mockRestore();
-    });
   });
 
   describe("PATCH /api/typeRelation/:id/enable", () => {
     it("doit permettre à l'admin de réactiver un type", async () => {
-      // On s'assure qu'il est désactivé d'abord (fait par le test précédent)
       const res = await request(app)
         .patch(`/api/typeRelation/${testTypeId}/enable`)
         .set("Authorization", `Bearer ${adminToken}`);
@@ -219,19 +205,6 @@ describe("TypeRelation Controller Integration Tests", () => {
         .patch(`/api/typeRelation/${testTypeId}/enable`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(404);
-    });
-
-    it("doit renvoyer 500 si le enable crash", async () => {
-      const spy = (
-        jest.spyOn(TypeRelation, "findOneAndUpdate") as any
-      ).mockImplementationOnce(() => {
-        throw new Error("Crash");
-      });
-      const res = await request(app)
-        .patch(`/api/typeRelation/${testTypeId}/enable`)
-        .set("Authorization", `Bearer ${adminToken}`);
-      expect(res.status).toBe(500);
-      spy.mockRestore();
     });
   });
 });

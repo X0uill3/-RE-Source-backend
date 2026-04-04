@@ -120,7 +120,7 @@ export const updateResource = async (req: any, res: Response) => {
       return res.status(404).json({ message: "Ressource non trouvée" });
 
     if (
-      resourceToUpdate.userId.toString() !== req.user._id.toString() &&
+      resourceToUpdate.userId._id.toString() !== req.user._id.toString() &&
       req.user.role !== GlobalRole.ADMIN
     ) {
       return res.status(403).json({ message: "Autorisation refusée" });
@@ -269,25 +269,5 @@ export const getUserResources = async (req: any, res: Response) => {
     });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: error.message });
-  }
-};
-
-/**
- * @desc    Réactiver une ressource désactivée (Admin)
- * @route   PATCH /api/resources/:id/enable
- */
-export const enableResource = async (req: Request, res: Response) => {
-  try {
-    const resource = await ResourceRepository.update(req.params.id as string, {
-      systemStatus: "Enabled",
-      updatedAt: new Date(),
-    });
-
-    if (!resource)
-      return res.status(404).json({ message: "Ressource non trouvée" });
-
-    res.status(200).json({ status: "success", data: { resource } });
-  } catch (error: any) {
-    res.status(400).json({ status: "error", message: error.message });
   }
 };

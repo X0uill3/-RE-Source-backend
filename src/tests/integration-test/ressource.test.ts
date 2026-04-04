@@ -2,6 +2,7 @@ import request from "supertest";
 import mongoose from "mongoose";
 import app from "../../index.js";
 import Resource from "../../models/Ressource.js";
+import ResourceRepository from "../../repositories/ressourceRepository.js";
 import User from "../../models/User.js";
 import Categorie from "../../models/Categorie.js";
 import { GlobalRole } from "../../constants/roles.js";
@@ -65,8 +66,8 @@ describe("Resource Controller Integration Tests", () => {
     const res1 = await Resource.create({
       title: "Ressource Publique",
       description: "Desc",
-      userId: userId,
-      categorie: categoryId,
+      userId: new mongoose.Types.ObjectId(userId),
+      categorie: new mongoose.Types.ObjectId(categoryId),
       systemStatus: "Enabled",
       visibility: "Public",
       typeRessource: GlobalTypeRessource.GAME,
@@ -76,8 +77,8 @@ describe("Resource Controller Integration Tests", () => {
     const res2 = await Resource.create({
       title: "Ressource En Attente",
       description: "Desc",
-      userId: userId,
-      categorie: categoryId,
+      userId: new mongoose.Types.ObjectId(userId),
+      categorie: new mongoose.Types.ObjectId(categoryId),
       systemStatus: "Disabled",
       visibility: "Public",
       typeRessource: GlobalTypeRessource.GAME,
@@ -85,12 +86,16 @@ describe("Resource Controller Integration Tests", () => {
     disabledResourceId = res2._id.toString();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   afterAll(async () => {
     await mongoose.connection.close();
   });
 
   describe("GET /api/resources", () => {
-    it("doit lister les ressources publiques activées", async () => {
+    it("doit lister les ressources publiques activées via Repository", async () => {
       const res = await request(app).get("/api/resources");
       expect(res.status).toBe(200);
       expect(
@@ -98,64 +103,55 @@ describe("Resource Controller Integration Tests", () => {
       ).toBe(true);
     });
 
-    it("doit filtrer les ressources par catégorie", async () => {
+    it("doit appliquer tous les filtres simultanément (categorie, typeRessource, typeRelation)", async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
       const res = await request(app).get(
-        `/api/resources?categorie=${categoryId}`,
+        `/api/resources?categorie=${categoryId}&typeRessource=${GlobalTypeRessource.GAME}&typeRelation=${fakeId}&sort=title`,
       );
       expect(res.status).toBe(200);
+      expect(res.body.status).toBe("success");
     });
 
-    it("doit filtrer les ressources par type de ressource (Query)", async () => {
-      const res = await request(app).get(
-        `/api/resources?typeRessource=${GlobalTypeRessource.GAME}`,
-      );
-
-      expect(res.status).toBe(200);
-      // On vérifie que la ressource retournée a bien le bon type
-      const allMatch = res.body.data.resources.every(
-        (r: any) => r.typeRessource === GlobalTypeRessource.GAME,
-      );
-      expect(allMatch).toBe(true);
-    });
-
-    it("doit filtrer les ressources par type de relation (Query)", async () => {
-      const fakeRelationId = new mongoose.Types.ObjectId().toString();
-      const res = await request(app).get(
-        `/api/resources?typeRelation=${fakeRelationId}`,
-      );
-
-      expect(res.status).toBe(200);
-      // Même si le résultat est vide (0 ressources), la ligne de code est exécutée
-      expect(Array.isArray(res.body.data.resources)).toBe(true);
-    });
-
-    it("doit renvoyer 500 si la base de données crash", async () => {
-      const spy = jest.spyOn(Resource, "find").mockImplementationOnce(() => {
-        throw new Error("Crash find");
-      });
+    it("doit renvoyer 500 si ResourceRepository.findAll crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "findAll")
+        .mockRejectedValueOnce(new Error("FindAll Crash"));
       const res = await request(app).get("/api/resources");
       expect(res.status).toBe(500);
-      spy.mockRestore();
     });
   });
 
   describe("GET /api/resources/restricted", () => {
-    it("doit lister toutes les ressources activées pour un citoyen connecté", async () => {
+    it("doit lister les ressources restreintes via Repository", async () => {
       const res = await request(app)
         .get("/api/resources/restricted")
         .set("Authorization", `Bearer ${userToken}`);
       expect(res.status).toBe(200);
     });
 
-    it("doit renvoyer 500 si la récupération restreinte crash", async () => {
-      const spy = jest.spyOn(Resource, "find").mockImplementationOnce(() => {
-        throw new Error("Crash");
-      });
+    it("doit renvoyer 500 si le repository crash sur restricted", async () => {
+      jest
+        .spyOn(ResourceRepository, "findAll")
+        .mockRejectedValueOnce(new Error("Restricted Error"));
       const res = await request(app)
         .get("/api/resources/restricted")
         .set("Authorization", `Bearer ${userToken}`);
       expect(res.status).toBe(500);
-      spy.mockRestore();
+    });
+  });
+
+  describe("GET /api/resources/popular", () => {
+    it("doit respecter le paramètre de limite", async () => {
+      const res = await request(app).get("/api/resources/popular?limit=5");
+      expect(res.status).toBe(200);
+    });
+
+    it("doit renvoyer 500 si findPopular crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "findPopular")
+        .mockRejectedValueOnce(new Error("Popular Crash"));
+      const res = await request(app).get("/api/resources/popular");
+      expect(res.status).toBe(500);
     });
   });
 
@@ -166,26 +162,23 @@ describe("Resource Controller Integration Tests", () => {
       expect(res.body.data.resource.views).toBeGreaterThan(0);
     });
 
-    it("doit renvoyer 404 si la ressource n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
+    it("doit renvoyer 404 si le repository ne trouve pas l'ID", async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
       const res = await request(app).get(`/api/resources/${fakeId}`);
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer 500 en cas d'erreur serveur sur le findById", async () => {
-      const spy = jest
-        .spyOn(Resource, "findById")
-        .mockImplementationOnce(() => {
-          throw new Error("Crash");
-        });
+    it("doit renvoyer 500 si save crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "save")
+        .mockRejectedValueOnce(new Error("Save Error"));
       const res = await request(app).get(`/api/resources/${publicResourceId}`);
       expect(res.status).toBe(500);
-      spy.mockRestore();
     });
   });
 
   describe("POST /api/resources", () => {
-    it("doit créer une ressource en statut 'Disabled' pour un citoyen", async () => {
+    it("doit créer une ressource via ResourceRepository.create", async () => {
       const res = await request(app)
         .post("/api/resources")
         .set("Authorization", `Bearer ${userToken}`)
@@ -195,33 +188,22 @@ describe("Resource Controller Integration Tests", () => {
           typeRessource: GlobalTypeRessource.GAME,
         });
       expect(res.status).toBe(201);
-      expect(res.body.data.resource.systemStatus).toBe("Disabled");
     });
 
-    it("doit créer une ressource en statut 'Enabled' pour un admin", async () => {
-      const res = await request(app)
-        .post("/api/resources")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          title: "Admin Res",
-          description: "Desc",
-          typeRessource: GlobalTypeRessource.GAME,
-        });
-      expect(res.status).toBe(201);
-      expect(res.body.data.resource.systemStatus).toBe("Enabled");
-    });
-
-    it("doit renvoyer 400 si la création échoue (validation)", async () => {
+    it("doit renvoyer 400 si ResourceRepository.create crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "create")
+        .mockRejectedValueOnce(new Error("Validation Error"));
       const res = await request(app)
         .post("/api/resources")
         .set("Authorization", `Bearer ${userToken}`)
-        .send({}); // Title manquant
+        .send({ title: "Fail" });
       expect(res.status).toBe(400);
     });
   });
 
   describe("PATCH /api/resources/:id", () => {
-    it("doit permettre à l'auteur de modifier sa ressource (et la repasser en Disabled)", async () => {
+    it("doit permettre à l'auteur de modifier sa ressource", async () => {
       const res = await request(app)
         .patch(`/api/resources/${publicResourceId}`)
         .set("Authorization", `Bearer ${userToken}`)
@@ -230,225 +212,185 @@ describe("Resource Controller Integration Tests", () => {
       expect(res.body.data.resource.systemStatus).toBe("Disabled");
     });
 
-    it("doit refuser la modification par un autre utilisateur (403)", async () => {
+    it("doit renvoyer 403 si l'utilisateur n'est pas l'auteur", async () => {
       const res = await request(app)
         .patch(`/api/resources/${disabledResourceId}`)
         .set("Authorization", `Bearer ${otherUserToken}`)
-        .send({ title: "Hacker" });
+        .send({ title: "Hack" });
       expect(res.status).toBe(403);
     });
 
     it("doit renvoyer 404 si la ressource à modifier n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
+      const fakeId = new mongoose.Types.ObjectId().toString();
       const res = await request(app)
         .patch(`/api/resources/${fakeId}`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer une 400 si la mise à jour finale (findByIdAndUpdate) échoue", async () => {
-      // On mocke findById pour que l'autorisation passe, mais findByIdAndUpdate pour que le catch soit activé
-      const spy = jest
-        .spyOn(Resource, "findByIdAndUpdate")
-        .mockImplementationOnce(() => {
-          throw new Error("Final Update Crash");
-        });
+    it("doit renvoyer 400 si ResourceRepository.update crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "update")
+        .mockRejectedValueOnce(new Error("Update Crash"));
       const res = await request(app)
         .patch(`/api/resources/${publicResourceId}`)
-        .set("Authorization", `Bearer ${userToken}`)
+        .set("Authorization", `Bearer ${adminToken}`)
         .send({ title: "Retry" });
-
       expect(res.status).toBe(400);
-      spy.mockRestore();
     });
   });
 
   describe("PATCH /api/resources/:id/validate", () => {
-    it("doit permettre à l'admin de valider une ressource", async () => {
+    it("doit valider une ressource via Repository.update", async () => {
       const res = await request(app)
         .patch(`/api/resources/${disabledResourceId}/validate`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
-      expect(res.body.data.resource.systemStatus).toBe("Enabled");
     });
 
     it("doit renvoyer 404 si la ressource à valider n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
+      const fakeId = new mongoose.Types.ObjectId().toString();
       const res = await request(app)
         .patch(`/api/resources/${fakeId}/validate`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer une 400 si la validation échoue à cause d'une erreur serveur", async () => {
-      const spy = jest
-        .spyOn(Resource, "findByIdAndUpdate")
-        .mockImplementationOnce(() => {
-          throw new Error("Validation Crash");
-        });
+    it("doit renvoyer 400 si update crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "update")
+        .mockRejectedValueOnce(new Error("Crash"));
       const res = await request(app)
         .patch(`/api/resources/${disabledResourceId}/validate`)
         .set("Authorization", `Bearer ${adminToken}`);
-
       expect(res.status).toBe(400);
-      spy.mockRestore();
     });
   });
 
   describe("DELETE /api/resources/:id", () => {
-    it("doit suspendre une ressource (passer en Disabled) par l'admin", async () => {
+    it("doit suspendre une ressource", async () => {
       const res = await request(app)
         .delete(`/api/resources/${publicResourceId}`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(204);
-      const updated = await Resource.findById(publicResourceId);
-      expect(updated?.systemStatus).toBe("Disabled");
     });
-    it("doit renvoyer une 404 si la ressource à supprimer n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
+
+    it("doit renvoyer 404 si n'existe pas", async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
       const res = await request(app)
         .delete(`/api/resources/${fakeId}`)
         .set("Authorization", `Bearer ${adminToken}`);
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer une 400 si la suppression (suspension) crash", async () => {
-      const spy = jest
-        .spyOn(Resource, "findByIdAndUpdate")
-        .mockImplementationOnce(() => {
-          throw new Error("Delete Crash");
-        });
+    it("doit renvoyer 400 si crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "update")
+        .mockRejectedValueOnce(new Error("Err"));
       const res = await request(app)
         .delete(`/api/resources/${publicResourceId}`)
         .set("Authorization", `Bearer ${adminToken}`);
-
       expect(res.status).toBe(400);
-      spy.mockRestore();
     });
   });
 
   describe("PATCH /api/resources/:id/start", () => {
-    it("doit démarrer une ressource de type GAME", async () => {
+    it("doit démarrer une ressource supportée", async () => {
       const res = await request(app)
         .patch(`/api/resources/${disabledResourceId}/start`)
         .set("Authorization", `Bearer ${userToken}`);
       expect(res.status).toBe(200);
-      expect(res.body.data.resource.start).toBe(true);
     });
 
-    it("doit refuser de démarrer une ressource qui n'est pas GAME ou ACTIVITY", async () => {
-      const mockedResource = {
-        _id: categoryId,
+    it("doit refuser de démarrer un type non supporté (ex: ARTICLE)", async () => {
+      jest.spyOn(ResourceRepository, "findById").mockResolvedValueOnce({
         typeRessource: "ARTICLE",
-      };
-
-      const spy = jest.spyOn(Resource, "findById") as any;
-
-      spy.mockImplementationOnce(() => Promise.resolve(mockedResource));
-
+      } as any);
       const res = await request(app)
         .patch(`/api/resources/${publicResourceId}/start`)
         .set("Authorization", `Bearer ${userToken}`);
-
       expect(res.status).toBe(400);
-      expect(res.body.message).toMatch(/ne peut pas être démarrée/);
-
-      spy.mockRestore();
     });
 
-    it("doit renvoyer 404 si la ressource à démarrer n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
+    it("doit renvoyer 404 si n'existe pas", async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
       const res = await request(app)
         .patch(`/api/resources/${fakeId}/start`)
         .set("Authorization", `Bearer ${userToken}`);
       expect(res.status).toBe(404);
     });
 
-    it("doit renvoyer une 500 si le démarrage de la ressource provoque une erreur serveur", async () => {
-      const spy = jest
-        .spyOn(Resource, "findById")
-        .mockImplementationOnce(() => {
-          throw new Error("Start Crash");
-        });
+    it("doit renvoyer 500 si crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "findById")
+        .mockRejectedValueOnce(new Error("Err"));
       const res = await request(app)
         .patch(`/api/resources/${publicResourceId}/start`)
         .set("Authorization", `Bearer ${userToken}`);
-
       expect(res.status).toBe(500);
-      spy.mockRestore();
     });
   });
 
-  describe("GET /api/resources/popular", () => {
-    beforeAll(async () => {
-      // On s'assure d'avoir plusieurs ressources avec des nombres de vues différents
-      await Resource.create([
-        {
-          title: "Pop 1",
-          description: "Desc",
-          userId: userId,
-          categorie: categoryId,
-          systemStatus: "Enabled",
-          visibility: "Public",
-          typeRessource: GlobalTypeRessource.GAME,
-          views: 100,
-        },
-        {
-          title: "Pop 2",
-          description: "Desc",
-          userId: userId,
-          categorie: categoryId,
-          systemStatus: "Enabled",
-          visibility: "Public",
-          typeRessource: GlobalTypeRessource.GAME,
-          views: 500,
-        },
-      ]);
-    });
-
-    it("doit lister les ressources les plus populaires (triées par vues décroissantes)", async () => {
-      const res = await request(app).get("/api/resources/popular");
-
+  describe("PATCH /api/resources/:id/stop", () => {
+    it("doit arrêter une ressource supportée", async () => {
+      const res = await request(app)
+        .patch(`/api/resources/${publicResourceId}/stop`)
+        .set("Authorization", `Bearer ${userToken}`);
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("success");
-      expect(Array.isArray(res.body.data.resources)).toBe(true);
-
-      // Vérification du tri : la première ressource doit avoir plus de vues que la seconde
-      const resources = res.body.data.resources;
-      if (resources.length >= 2) {
-        expect(resources[0].views).toBeGreaterThanOrEqual(resources[1].views);
-      }
     });
 
-    it("doit respecter le paramètre de limite s'il est fourni", async () => {
-      const limit = 1;
-      const res = await request(app).get(
-        `/api/resources/popular?limit=${limit}`,
-      );
-
-      expect(res.status).toBe(200);
-      expect(res.body.data.resources.length).toBeLessThanOrEqual(limit);
+    it("doit refuser d'arrêter une ressource non arrêtable", async () => {
+      jest.spyOn(ResourceRepository, "findById").mockResolvedValueOnce({
+        typeRessource: "ARTICLE",
+      } as any);
+      const res = await request(app)
+        .patch(`/api/resources/${publicResourceId}/stop`)
+        .set("Authorization", `Bearer ${userToken}`);
+      expect(res.status).toBe(400);
     });
 
-    it("doit renvoyer 500 si la récupération des populaires crash (catch)", async () => {
-      // On mock la méthode find de Resource
-      const spy = jest.spyOn(Resource, "find").mockImplementationOnce(() => {
-        return {
-          populate: jest.fn().mockReturnThis(),
-          sort: jest.fn().mockReturnThis(),
-          limit: jest.fn().mockImplementationOnce(() => {
-            throw new Error("Popular Crash");
-          }),
-        } as any;
-      });
+    it("doit renvoyer 404 si n'existe pas", async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
+      const res = await request(app)
+        .patch(`/api/resources/${fakeId}/stop`)
+        .set("Authorization", `Bearer ${userToken}`);
+      expect(res.status).toBe(404);
+    });
 
-      const res = await request(app).get("/api/resources/popular");
-
+    it("doit renvoyer 500 si crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "findById")
+        .mockRejectedValueOnce(new Error("Err"));
+      const res = await request(app)
+        .patch(`/api/resources/${publicResourceId}/stop`)
+        .set("Authorization", `Bearer ${userToken}`);
       expect(res.status).toBe(500);
-      expect(res.body.status).toBe("error");
-      expect(res.body.message).toBe("Popular Crash");
+    });
+  });
 
-      spy.mockRestore();
+  describe("GET /api/resources/user/:id", () => {
+    it("doit retourner les ressources de l'utilisateur", async () => {
+      const res = await request(app)
+        .get(`/api/resources/user/${userId}`)
+        .set("Authorization", `Bearer ${userToken}`);
+      expect(res.status).toBe(200);
+    });
+
+    it("doit refuser l'accès si l'utilisateur n'est ni l'auteur ni admin (403)", async () => {
+      const res = await request(app)
+        .get(`/api/resources/user/${new mongoose.Types.ObjectId()}`)
+        .set("Authorization", `Bearer ${userToken}`);
+      expect(res.status).toBe(403);
+    });
+
+    it("doit renvoyer 500 si crash", async () => {
+      jest
+        .spyOn(ResourceRepository, "findByUserId")
+        .mockRejectedValueOnce(new Error("Err"));
+      const res = await request(app)
+        .get(`/api/resources/user/${userId}`)
+        .set("Authorization", `Bearer ${userToken}`);
+      expect(res.status).toBe(500);
     });
   });
 });

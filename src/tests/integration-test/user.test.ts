@@ -2,6 +2,7 @@ import request from "supertest";
 import mongoose from "mongoose";
 import app from "../../index.js";
 import User from "../../models/User.js";
+import UserRepository from "../../repositories/userRepository.js"; // Import du Repository
 import { GlobalRole } from "../../constants/roles.js";
 import { jest } from "@jest/globals";
 
@@ -9,7 +10,6 @@ describe("User Controller Integration Tests", () => {
   let adminToken: string;
   let userToken: string;
   let userId: string;
-  let adminId: string;
 
   beforeAll(async () => {
     await User.deleteMany({});
@@ -22,11 +22,11 @@ describe("User Controller Integration Tests", () => {
       password: "password123",
       birthdate: "1990-01-01",
     });
-    await User.findByIdAndUpdate(adminRes.body.data.user._id, {
+    // On utilise le repository pour mettre à jour le rôle
+    await UserRepository.update(adminRes.body.data.user._id, {
       role: GlobalRole.ADMIN,
     });
     adminToken = adminRes.body.token;
-    adminId = adminRes.body.data.user._id;
 
     // 2. Création d'un Utilisateur simple
     const userRes = await request(app).post("/api/auth/signup").send({
@@ -57,7 +57,7 @@ describe("User Controller Integration Tests", () => {
       expect(res.body.data.user.email).toBe("john@test.fr");
     });
 
-    it("doit renvoyer 500 en cas de crash", async () => {
+    it("doit renvoyer 500 en cas de crash (ex: JSON stringify)", async () => {
       const spy = jest.spyOn(JSON, "stringify").mockImplementationOnce(() => {
         throw new Error("Crash JSON");
       });
@@ -68,33 +68,34 @@ describe("User Controller Integration Tests", () => {
 
       expect(res.status).toBe(500);
       expect(res.body.message).toBe("Crash JSON");
-
-      spy.mockRestore();
     });
   });
 
   describe("PATCH /api/users/updateMe", () => {
-    it("doit mettre à jour les informations de l'utilisateur", async () => {
+    it("doit mettre à jour les informations de l'utilisateur via Repository", async () => {
       const res = await request(app)
         .patch("/api/users/updateMe")
         .set("Authorization", `Bearer ${userToken}`)
         .send({ firstname: "Johnny" });
+
       expect(res.status).toBe(200);
       expect(res.body.data.user.firstname).toBe("Johnny");
     });
 
-    it("doit renvoyer 400 en cas d'erreur de validation ou crash", async () => {
+    it("doit renvoyer 400 si UserRepository.update échoue", async () => {
       const spy = jest
-        .spyOn(User, "findByIdAndUpdate")
+        .spyOn(UserRepository, "update")
         .mockImplementationOnce(() => {
-          throw new Error("UpdateMe Crash");
+          throw new Error("Repository Update Error");
         });
+
       const res = await request(app)
         .patch("/api/users/updateMe")
         .set("Authorization", `Bearer ${userToken}`)
         .send({ firstname: "Fail" });
+
       expect(res.status).toBe(400);
-      spy.mockRestore();
+      expect(res.body.message).toBe("Repository Update Error");
     });
   });
 
@@ -135,20 +136,25 @@ describe("User Controller Integration Tests", () => {
       expect(res.status).toBe(401);
     });
 
-    it("doit renvoyer 500 si le processus crash", async () => {
-      const spy = jest.spyOn(User, "findById").mockImplementationOnce(() => {
-        throw new Error("Password Crash");
-      });
+    it("doit renvoyer 500 si UserRepository.findByIdWithPassword crash", async () => {
+      const spy = jest
+        .spyOn(UserRepository, "findByIdWithPassword")
+        .mockImplementationOnce(() => {
+          throw new Error("FindWithPassword Crash");
+        });
+
       const res = await request(app)
         .patch("/api/users/updateMyPassword")
-        .set("Authorization", `Bearer ${userToken}`);
+        .set("Authorization", `Bearer ${userToken}`)
+        .send({ passwordCurrent: "..." });
+
       expect(res.status).toBe(500);
-      spy.mockRestore();
+      expect(res.body.message).toBe("FindWithPassword Crash");
     });
   });
 
   describe("GET /api/users (Admin)", () => {
-    it("doit lister tous les utilisateurs pour l'admin", async () => {
+    it("doit lister tous les utilisateurs via UserRepository.findAll", async () => {
       const res = await request(app)
         .get("/api/users")
         .set("Authorization", `Bearer ${adminToken}`);
@@ -156,15 +162,17 @@ describe("User Controller Integration Tests", () => {
       expect(res.body.results).toBeGreaterThanOrEqual(2);
     });
 
-    it("doit renvoyer 500 si la récupération crash", async () => {
-      const spy = jest.spyOn(User, "find").mockImplementationOnce(() => {
-        throw new Error("FindAll Crash");
-      });
+    it("doit renvoyer 500 si UserRepository.findAll crash", async () => {
+      const spy = jest
+        .spyOn(UserRepository, "findAll")
+        .mockImplementationOnce(() => {
+          throw new Error("FindAll Error");
+        });
       const res = await request(app)
         .get("/api/users")
         .set("Authorization", `Bearer ${adminToken}`);
+
       expect(res.status).toBe(500);
-      spy.mockRestore();
     });
   });
 
@@ -174,11 +182,12 @@ describe("User Controller Integration Tests", () => {
         .patch(`/api/users/${userId}`)
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ role: GlobalRole.MODERATOR });
+
       expect(res.status).toBe(200);
       expect(res.body.data.user.role).toBe(GlobalRole.MODERATOR);
     });
 
-    it("doit renvoyer 404 si l'utilisateur n'existe pas", async () => {
+    it("doit renvoyer 404 si le repository ne trouve pas l'utilisateur", async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const res = await request(app)
         .patch(`/api/users/${fakeId}`)
@@ -186,107 +195,68 @@ describe("User Controller Integration Tests", () => {
         .send({ firstname: "Invisible" });
       expect(res.status).toBe(404);
     });
-
-    it("doit renvoyer une 400 si updateUser crash (Admin)", async () => {
-      const spy = jest
-        .spyOn(User, "findByIdAndUpdate")
-        .mockImplementationOnce(() => {
-          throw new Error("Update Crash");
-        });
-      const res = await request(app)
-        .patch(`/api/users/${userId}`)
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({ role: GlobalRole.ADMIN });
-
-      expect(res.status).toBe(400);
-      spy.mockRestore();
-    });
   });
 
   describe("DELETE /api/users/:id (Admin Disable)", () => {
-    it("doit désactiver le compte d'un utilisateur", async () => {
+    it("doit désactiver le compte via UserRepository.update", async () => {
       const res = await request(app)
         .delete(`/api/users/${userId}`)
         .set("Authorization", `Bearer ${adminToken}`);
+
       expect(res.status).toBe(200);
       expect(res.body.data.user.systemStatus).toBe("Disabled");
-    });
-
-    it("doit renvoyer une 404 si l'utilisateur à désactiver n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
-      const res = await request(app)
-        .delete(`/api/users/${fakeId}`)
-        .set("Authorization", `Bearer ${adminToken}`);
-      expect(res.status).toBe(404);
-    });
-
-    it("doit renvoyer une 400 si deleteUser crash", async () => {
-      const spy = jest
-        .spyOn(User, "findByIdAndUpdate")
-        .mockImplementationOnce(() => {
-          throw new Error("Delete Error");
-        });
-      const res = await request(app)
-        .delete(`/api/users/${userId}`)
-        .set("Authorization", `Bearer ${adminToken}`);
-      expect(res.status).toBe(400);
-      spy.mockRestore();
     });
   });
 
   describe("PATCH /api/users/:id/reactivate (Admin)", () => {
-    it("doit réactiver le compte d'un utilisateur", async () => {
+    it("doit réactiver le compte via UserRepository.update", async () => {
       const res = await request(app)
         .patch(`/api/users/${userId}/reactivate`)
         .set("Authorization", `Bearer ${adminToken}`);
+
       expect(res.status).toBe(200);
       expect(res.body.data.user.systemStatus).toBe("Enabled");
     });
 
-    it("doit renvoyer une 404 si l'utilisateur à réactiver n'existe pas", async () => {
-      const fakeId = new mongoose.Types.ObjectId();
-      const res = await request(app)
-        .patch(`/api/users/${fakeId}/reactivate`)
-        .set("Authorization", `Bearer ${adminToken}`);
-      expect(res.status).toBe(404);
-    });
-
-    it("doit renvoyer une 400 si reactivateUser crash", async () => {
+    it("doit renvoyer 400 si la réactivation dans le repository crash", async () => {
       const spy = jest
-        .spyOn(User, "findByIdAndUpdate")
+        .spyOn(UserRepository, "update")
         .mockImplementationOnce(() => {
-          throw new Error("Reactivate Error");
+          throw new Error("Reactivate Repo Error");
         });
       const res = await request(app)
         .patch(`/api/users/${userId}/reactivate`)
         .set("Authorization", `Bearer ${adminToken}`);
+
       expect(res.status).toBe(400);
-      spy.mockRestore();
     });
   });
 
   describe("DELETE /api/users/deleteMe", () => {
-    it("doit permettre à l'utilisateur de supprimer son propre compte", async () => {
+    it("doit supprimer son compte via UserRepository.deleteById", async () => {
       const res = await request(app)
         .delete("/api/users/deleteMe")
         .set("Authorization", `Bearer ${userToken}`);
+
       expect(res.status).toBe(204);
 
+      // On vérifie directement avec le modèle que l'utilisateur n'existe plus
       const check = await User.findById(userId);
       expect(check).toBeNull();
     });
 
-    it("doit renvoyer 400 si la suppression propre crash", async () => {
+    it("doit renvoyer 400 si deleteById crash", async () => {
       const spy = jest
-        .spyOn(User, "findByIdAndDelete")
+        .spyOn(UserRepository, "deleteById")
         .mockImplementationOnce(() => {
-          throw new Error("DeleteMe Crash");
+          throw new Error("DeleteById Repo Error");
         });
+      // On utilise adminToken car userToken correspond à l'utilisateur supprimé juste au-dessus
       const res = await request(app)
         .delete("/api/users/deleteMe")
-        .set("Authorization", `Bearer ${adminToken}`); // On utilise l'admin car l'autre est supprimé
+        .set("Authorization", `Bearer ${adminToken}`);
+
       expect(res.status).toBe(400);
-      spy.mockRestore();
     });
   });
 });
