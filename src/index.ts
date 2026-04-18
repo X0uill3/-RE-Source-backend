@@ -35,6 +35,8 @@ app.get("/", (req: Request, res: Response) => {
   res.send("API Ressource Backend est en cours d'exécution");
 });
 
+app.use('/uploads', express.static('uploads'));
+
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== "test") {
   connectDB();
