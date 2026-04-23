@@ -1,5 +1,6 @@
 import InteractionModel, { type IInteraction } from "../models/Interaction.js";
 import mongoose from "mongoose";
+import { RessourceInteractionType } from '../constants/interactions.js'
 
 class InteractionRepository {
   /**
@@ -39,6 +40,22 @@ class InteractionRepository {
       UserId: userId,
     });
   }
+
+  async getSavedResources(userId: string | mongoose.Types.ObjectId): Promise<IInteraction[]> {
+    return await InteractionModel.find({
+      UserId: userId,
+      interactionType: RessourceInteractionType.SAVE
+    }).sort("-date");
+  }
+
+  async getFavoriteResources(userId: string | mongoose.Types.ObjectId): Promise<IInteraction[]> {
+    return await InteractionModel.find({
+      UserId: userId,
+      interactionType: RessourceInteractionType.FAVORITE
+    }).sort("-date");
+  }
+
+
 }
 
 export default new InteractionRepository();

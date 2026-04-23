@@ -17,9 +17,11 @@ import {
   checkRole,
   softProtect,
 } from "../middleware/authMiddleware.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 import { GlobalRole } from "../constants/roles.js";
 
 const router = Router();
+
 router.use(softProtect);
 
 router.get("/", getAllResources);
@@ -32,7 +34,8 @@ router.use(protect);
 router.patch("/:id/start", startResource);
 router.patch("/:id/stop", stopResource);
 router.patch("/:id", updateResource);
-router.post("/", createResource);
+
+router.post("/", upload.single("image"), createResource);
 
 router.patch(
   "/:id/validate",

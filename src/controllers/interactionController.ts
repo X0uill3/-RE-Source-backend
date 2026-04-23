@@ -91,3 +91,41 @@ export const getRessourceInteractions = async (req: any, res: Response) => {
     res.status(500).json({ status: "error", message: error.message });
   }
 };
+
+/**
+ * @desc Récupérer les resources save d'un user
+ * @route   GET /api/interactions/user/saved
+ * @access  Privé (Utilisateur connecté)
+ */
+export const getUserSavedResources = async (req: any, res: Response) => {
+  try {
+    const savedResources = await InteractionRepository.getSavedResources(req.user._id);
+
+    res.status(200).json({
+      status: "success",
+      results: savedResources.length,
+      data: { savedResources },
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+/**
+ * @desc    Récupérer les resources favoris d'un user
+ * @route   GET /api/interactions/user/favorites
+ * @access  Privé (Utilisateur connecté)
+ */
+export const getUserFavoriteResources = async (req: any, res: Response) => {
+  try {
+    const favoriteResources = await InteractionRepository.getFavoriteResources(req.user._id);
+
+    res.status(200).json({
+      status: "success",
+      results: favoriteResources.length,
+      data: { favoriteResources },
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
