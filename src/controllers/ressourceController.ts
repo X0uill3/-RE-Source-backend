@@ -96,9 +96,9 @@ export const getResource = async (req: Request, res: Response) => {
 export const createResource = async (req: any, res: Response) => {
   try {
     const status = req.user.role === GlobalRole.ADMIN ? "Enabled" : "Disabled";
-    const imageUrl = req.file ? `/${req.file.path.replace(/\\/g, '/')}` : null;
+    const picture = req.file ? `/${req.file.path.replace(/\\/g, '/')}` : null;
 
-    const data = { ...req.body, userId: req.user._id, systemStatus: status, imageUrl };
+    const data = { ...req.body, userId: req.user._id, systemStatus: status, picture };
 
     const resource = await ResourceRepository.create(data);
 

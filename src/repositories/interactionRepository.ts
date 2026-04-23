@@ -45,14 +45,30 @@ class InteractionRepository {
     return await InteractionModel.find({
       UserId: userId,
       interactionType: RessourceInteractionType.SAVE
-    }).sort("-date");
+    })
+      .populate({
+        path: "ressourceId",
+        populate: [
+          { path: "categorie" },
+          { path: "userId", select: "firstname lastname" },
+        ],
+      })
+      .sort("-date");
   }
 
   async getFavoriteResources(userId: string | mongoose.Types.ObjectId): Promise<IInteraction[]> {
     return await InteractionModel.find({
       UserId: userId,
       interactionType: RessourceInteractionType.FAVORITE
-    }).sort("-date");
+    })
+      .populate({
+        path: "ressourceId",
+        populate: [
+          { path: "categorie" },
+          { path: "userId", select: "firstname lastname" },
+        ],
+      })
+      .sort("-date");
   }
 
 

@@ -1,4 +1,6 @@
 export enum GlobalTypeRessource {
     GAME = 'GAME',
-    ACTIVITY = 'ACTIVITY'
+    ACTIVITY = 'ACTIVITY',
+    ARTICLE = 'ARTICLE',
+    VIDEO = 'VIDEO',
 }
