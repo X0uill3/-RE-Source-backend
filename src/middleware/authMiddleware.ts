@@ -18,7 +18,7 @@ export const protect = async (
   if (req.headers.authorization?.startsWith("Bearer")) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+      const decoded: any = jwt.verify(token as any, process.env.JWT_SECRET!);
 
       // On injecte l'utilisateur (sans son mot de passe) dans la requête [cite: 183]
       req.user = await User.findById(decoded.id).select("-password");
@@ -53,7 +53,7 @@ export const softProtect = async (
   if (req.headers.authorization?.startsWith("Bearer")) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+      const decoded: any = jwt.verify(token as any, process.env.JWT_SECRET!);
       req.user = await User.findById(decoded.id).select("-password");
 
       if (req.user && req.user.systemStatus === "Disabled") {
