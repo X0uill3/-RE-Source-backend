@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getAllResources,
+  getAllResourcesAdmin,
   getResource,
   getRestrictedResources,
   updateResource,
@@ -44,5 +45,6 @@ router.patch(
 );
 router.delete("/:id", checkRole([GlobalRole.ADMIN]), deleteResource);
 router.get("/user/:id", getUserResources);
+router.get("/admin/all", getAllResourcesAdmin);
 
 export default router;

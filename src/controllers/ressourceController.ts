@@ -36,6 +36,40 @@ export const getAllResources = async (req: Request, res: Response) => {
 };
 
 /**
+ * @desc    Lister toutes les ressources (Admin/Modérateur)
+ * @route   GET /api/resources/admin/all
+ */
+export const getAllResourcesAdmin = async (req: Request, res: Response) => {
+  try {
+    const { categorie, typeRessource, typeRelation, sort, systemStatus } = req.query;
+    
+    // On commence avec un objet vide pour tout récupérer par défaut
+    const query: any = {};
+
+    // Filtres optionnels
+    if (categorie) query.categorie = categorie;
+    if (typeRessource) query.typeRessource = typeRessource;
+    if (typeRelation) query.typeRelation = typeRelation;
+    
+    // Permet de filtrer spécifiquement par statut (ex: Disabled pour les non-activées)
+    if (systemStatus) query.systemStatus = systemStatus;
+
+    const resources = await ResourceRepository.findAll(
+      query,
+      sort ? String(sort) : "-createdAt",
+    );
+
+    res.status(200).json({
+      status: "success",
+      results: resources.length,
+      data: { resources },
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+/**
  * @desc    Lister les ressources restreintes (Citoyen connecté)
  * @route   GET /api/resources/restricted
  */
