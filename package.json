@@ -20,7 +20,10 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.4",
-    "multer": "^2.1.1"
+    "multer": "^2.2.0"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.4.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
