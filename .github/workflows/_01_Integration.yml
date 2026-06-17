@@ -12,7 +12,9 @@ jobs:
   Quality_SonarQube:
     needs: [Test]
     uses: ./.github/workflows/01-2_Sonar.yml
+    secrets: inherit
 
   Security_Snyk:
     needs: [Test]
     uses: ./.github/workflows/01-3_Snyk.yml
+    secrets: inherit
