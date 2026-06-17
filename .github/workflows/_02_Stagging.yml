@@ -11,7 +11,6 @@ jobs:
   Build_Push_Docker:
     if: github.ref_name == 'develop'
     uses: ./.github/workflows/02-1_DockerBuild.yml
-    secrets: inherit
     with:
       docker-mode: canary
 
@@ -19,13 +18,11 @@ jobs:
     needs: [Build_Push_Docker]
     if: github.ref_name == 'develop'
     uses: ./.github/workflows/02-2_Trivy.yml
-    secrets: inherit
 
   # -- Push sur release/* : déploiement staging --
   Bicep_Deploy:
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/02-3_BicepDeploy.yml
-    secrets: inherit
     permissions:
       id-token: write
 
@@ -33,7 +30,6 @@ jobs:
     needs: [Bicep_Deploy]
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/02-4_DeployApp.yml
-    secrets: inherit
     permissions:
       id-token: write
 
