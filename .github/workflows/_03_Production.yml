@@ -1,0 +1,24 @@
+name: 03 - Production
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  # -- PR vers main : build image de production --
+  DockerBuild_Prod:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/03-1_DockerBuildProd.yml
+    secrets: inherit
+
+  # -- Merge sur main : déploiement production --
+  Deploy_Prod:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/03-2_DeployProd.yml
+    secrets: inherit
+    permissions:
+      id-token: write

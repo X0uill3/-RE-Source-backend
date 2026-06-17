@@ -1,0 +1,45 @@
+name: 02 - Staging
+
+on:
+  push:
+    branches:
+      - develop
+      - release/*
+
+jobs:
+  # -- Merge sur develop : build + scan image canary --
+  Build_Push_Docker:
+    if: github.ref_name == 'develop'
+    uses: ./.github/workflows/02-1_DockerBuild.yml
+    secrets: inherit
+    with:
+      docker-mode: canary
+
+  Trivy_Scan:
+    needs: [Build_Push_Docker]
+    if: github.ref_name == 'develop'
+    uses: ./.github/workflows/02-2_Trivy.yml
+    secrets: inherit
+
+  # -- Push sur release/* : déploiement staging --
+  Bicep_Deploy:
+    if: startsWith(github.ref, 'refs/heads/release/')
+    uses: ./.github/workflows/02-3_BicepDeploy.yml
+    secrets: inherit
+    permissions:
+      id-token: write
+
+  Deploy_App:
+    needs: [Bicep_Deploy]
+    if: startsWith(github.ref, 'refs/heads/release/')
+    uses: ./.github/workflows/02-4_DeployApp.yml
+    secrets: inherit
+    permissions:
+      id-token: write
+
+  Zap_Scan:
+    needs: [Deploy_App]
+    if: startsWith(github.ref, 'refs/heads/release/')
+    uses: ./.github/workflows/02-5_ZapScan.yml
+    permissions:
+      issues: write

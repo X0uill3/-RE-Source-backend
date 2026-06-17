@@ -1,0 +1,23 @@
+name: 01-2 - Integration - Sonar
+
+on:
+  workflow_call
+
+jobs:
+  QualityBack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Coverage Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: back-coverage-report
+          path: coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

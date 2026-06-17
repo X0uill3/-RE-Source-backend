@@ -1,0 +1,63 @@
+name: 02-4 - Staging - Deploy App
+
+on:
+  workflow_call
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-22.04
+
+    env:
+      ResourceGroupName: "RessourcesRelationnelles-Staging"
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Public IP
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            echo "AZURE_VM_IP=$(az vm show -d -g ${{env.ResourceGroupName}} -n vm-staging --query publicIps -o tsv)" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{env.AZURE_VM_IP}}
+          port: ${{secrets.PORT}}
+          username: ${{secrets.AZURE_VM_LOGIN}}
+          password: ${{secrets.AZURE_VM_PASSWORD}}
+          source: "./docker-compose.yml"
+          target: "."
+
+      - name: Downcase Image Name
+        run: echo "IMAGE_NAME_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Start Application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{env.AZURE_VM_IP}}
+          port: ${{secrets.PORT}}
+          username: ${{secrets.AZURE_VM_LOGIN}}
+          password: ${{secrets.AZURE_VM_PASSWORD}}
+          script: |
+            echo ${{secrets.PAT_TOKEN}} | docker login ghcr.io -u ${{github.actor}} --password-stdin
+
+            echo MONO_PROJECT_BACK=ghcr.io/${{env.IMAGE_NAME_LOWER}}:canary > .env
+            echo MONO_PROJECT_FRONT=${{secrets.FRONT_IMAGE_CANARY}} >> .env
+            echo MONGO_ROOT_PASSWORD=${{secrets.MONGO_ROOT_PASSWORD}} >> .env
+            echo MONGO_DATABASE=ressources_relationnelles >> .env
+            echo JWT_SECRET=${{secrets.JWT_SECRET}} >> .env
+
+            docker pull ghcr.io/${{env.IMAGE_NAME_LOWER}}:canary
+            docker pull ${{secrets.FRONT_IMAGE_CANARY}}
+
+            docker compose down || true
+            docker compose up -d
