@@ -28,7 +28,7 @@ jobs:
           password: ${{secrets.PAT_TOKEN}}
 
       - name: Downcase Image Name
-        run: echo "IMAGE_NAME_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME_LOWER=$(echo ${GITHUB_REPOSITORY,,} | sed 's|/-|/|g')" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5

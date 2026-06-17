@@ -20,7 +20,7 @@ jobs:
           password: ${{secrets.PAT_TOKEN}}
 
       - name: Downcase Image Name
-        run: echo "IMAGE_NAME_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME_LOWER=$(echo ${GITHUB_REPOSITORY,,} | sed 's|/-|/|g')" >> $GITHUB_ENV
 
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@v0.36.0

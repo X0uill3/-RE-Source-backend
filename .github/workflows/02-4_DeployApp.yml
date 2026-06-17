@@ -38,7 +38,7 @@ jobs:
           target: "."
 
       - name: Downcase Image Name
-        run: echo "IMAGE_NAME_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME_LOWER=$(echo ${GITHUB_REPOSITORY,,} | sed 's|/-|/|g')" >> $GITHUB_ENV
 
       - name: Start Application
         uses: appleboy/ssh-action@v1.0.3
