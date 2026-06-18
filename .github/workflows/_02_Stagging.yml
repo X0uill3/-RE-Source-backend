@@ -25,6 +25,7 @@ jobs:
   Bicep_Deploy:
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/02-3_BicepDeploy.yml
+    secrets: inherit
     permissions:
       id-token: write
 
@@ -32,12 +33,16 @@ jobs:
     needs: [Bicep_Deploy]
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/02-4_DeployApp.yml
+    secrets: inherit
     permissions:
       id-token: write
 
   Zap_Scan:
-    needs: [Deploy_App]
+    needs: [Bicep_Deploy, Deploy_App]
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/02-5_ZapScan.yml
+    secrets: inherit
     permissions:
       issues: write
+    with:
+      vm_ip: ${{ needs.Bicep_Deploy.outputs.vm_ip }}
