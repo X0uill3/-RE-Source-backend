@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --setupFilesAfterEnv ./src/tests/setup.ts --runInBand",
-    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --setupFilesAfterEnv ./src/tests/setup.ts --runInBand --coverage --coverageReporters='html'",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --setupFilesAfterEnv ./src/tests/setup.ts --runInBand --coverage",
     "dev": "tsx watch src/index.ts",
     "seed": "tsx src/utils/seeder.ts"
   },
