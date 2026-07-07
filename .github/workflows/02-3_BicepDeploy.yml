@@ -17,8 +17,6 @@ on:
         required: true
       AZURE_VM_PASSWORD:
         required: true
-      PORT:
-        required: true
 
 jobs:
   AzureServer:
@@ -81,7 +79,7 @@ jobs:
         uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
           host: ${{env.AZURE_VM_IP}}
-          port: ${{secrets.PORT}}
+          port: 22
           username: ${{secrets.AZURE_VM_LOGIN}}
           password: ${{secrets.AZURE_VM_PASSWORD}}
           script: |
