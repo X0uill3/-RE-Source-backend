@@ -22,6 +22,7 @@ on:
 
 jobs:
   AzureServer:
+    environment: staging
     outputs:
       vm_ip: ${{ steps.get_ip.outputs.vm_ip }}
     runs-on: ubuntu-22.04

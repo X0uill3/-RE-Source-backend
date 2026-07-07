@@ -24,6 +24,9 @@ jobs:
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
   # -- Push sur release/* : déploiement staging --
+  # environment fixe (et non la branche) pour matcher le federated credential
+  # Azure : release/* est un pattern dynamique (release/1.0.0, release/2.0.0,
+  # ...) qu'Azure AD ne peut pas reconnaître via une ref exacte (AADSTS700213).
   Bicep_Deploy:
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/02-3_BicepDeploy.yml
