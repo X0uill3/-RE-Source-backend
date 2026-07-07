@@ -80,3 +80,15 @@ jobs:
 
             docker compose down || true
             docker compose up -d
+
+            echo "Waiting for the backend to become reachable on :5000..."
+            for i in $(seq 1 15); do
+              if curl -sf http://localhost:5000/ >/dev/null; then
+                echo "Backend is up after ${i}0s."
+                break
+              fi
+              sleep 10
+            done
+
+            docker ps -a
+            docker compose logs --no-color --tail=200
