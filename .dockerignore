@@ -1,0 +1,22 @@
+node_modules
+dist
+dist-ssr
+coverage
+
+.git
+.github
+
+.env
+*.local
+
+# Editor directories and files
+.vscode
+.idea
+.DS_Store
+
+*.log
+npm-debug.log*
+
+Dockerfile*
+docker-compose*
+.dockerignore

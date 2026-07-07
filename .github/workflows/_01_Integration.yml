@@ -12,9 +12,11 @@ jobs:
   Quality_SonarQube:
     needs: [Test]
     uses: ./.github/workflows/01-2_Sonar.yml
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   Security_Snyk:
     needs: [Test]
     uses: ./.github/workflows/01-3_Snyk.yml
-    secrets: inherit
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
