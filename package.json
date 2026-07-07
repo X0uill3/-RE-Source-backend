@@ -23,7 +23,8 @@
     "multer": "^2.2.0"
   },
   "overrides": {
-    "path-to-regexp": "^8.4.0"
+    "path-to-regexp": "^8.4.0",
+    "qs": "^6.15.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

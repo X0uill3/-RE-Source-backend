@@ -9,7 +9,8 @@ FROM node:20-alpine
 WORKDIR /app
 RUN apk update && apk upgrade --no-cache
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY --from=builder /app/dist ./dist
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
