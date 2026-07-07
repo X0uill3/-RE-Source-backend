@@ -26,7 +26,6 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       AZURE_VM_LOGIN: ${{ secrets.AZURE_VM_LOGIN }}
       AZURE_VM_PASSWORD: ${{ secrets.AZURE_VM_PASSWORD }}
-      PORT: ${{ secrets.PORT }}
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
       FRONT_IMAGE_PROD: ${{ secrets.FRONT_IMAGE_PROD }}
       MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
