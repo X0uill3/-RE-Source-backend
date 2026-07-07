@@ -7,6 +7,7 @@ RUN npx tsc --outDir dist
 
 FROM node:20-alpine
 WORKDIR /app
+RUN apk update && apk upgrade --no-cache
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
