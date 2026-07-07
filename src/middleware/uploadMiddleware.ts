@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 
 // S'assurer que le dossier existe
 const uploadDir = 'uploads/resources';
@@ -14,7 +15,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         // On crée un nom unique pour éviter d'écraser des fichiers
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(6).toString('hex');
         cb(null, 'resource-' + uniqueSuffix + path.extname(file.originalname));
     }
 });

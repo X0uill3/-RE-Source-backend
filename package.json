@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --setupFilesAfterEnv ./src/tests/setup.ts --runInBand",
-    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --setupFilesAfterEnv ./src/tests/setup.ts --runInBand --coverage --coverageReporters='html'",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --setupFilesAfterEnv ./src/tests/setup.ts --runInBand --coverage",
     "dev": "tsx watch src/index.ts",
     "seed": "tsx src/utils/seeder.ts"
   },
@@ -18,9 +18,14 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.4",
-    "multer": "^2.1.1"
+    "multer": "^2.2.0"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.4.0",
+    "qs": "^6.15.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

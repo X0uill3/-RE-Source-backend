@@ -1,0 +1,36 @@
+name: 02-5 - Staging - ZAP Scan
+
+on:
+  workflow_call:
+    inputs:
+      vm_ip:
+        required: true
+        type: string
+
+jobs:
+  Back_Zap_Scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Scan baseline en attendant la documentation OpenAPI de l'API (issue #10) :
+      # action-api-scan a besoin d'un spec openapi/soap/graphql à importer, or
+      # /api-docs n'existe pas encore et fait échouer le job avant même de scanner.
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
+        with:
+          target: 'http://${{ inputs.vm_ip }}:5000'
+          fail_action: true
+          artifact_name: 'back_zap_scan'
+          issue_title: 'ZAP Back Scan Report'
+
+  Front_Zap_Scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
+        with:
+          target: 'http://${{ inputs.vm_ip }}'
+          fail_action: true
+          artifact_name: 'front_zap_scan'
+          issue_title: 'ZAP Front Scan Report'

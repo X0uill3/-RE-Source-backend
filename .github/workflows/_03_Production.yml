@@ -1,0 +1,34 @@
+name: 03 - Production
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  # -- PR vers main : build image de production --
+  DockerBuild_Prod:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/03-1_DockerBuildProd.yml
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+  # -- Merge sur main : déploiement production --
+  Deploy_Prod:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/03-2_DeployProd.yml
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_VM_LOGIN: ${{ secrets.AZURE_VM_LOGIN }}
+      AZURE_VM_PASSWORD: ${{ secrets.AZURE_VM_PASSWORD }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      FRONT_IMAGE_PROD: ${{ secrets.FRONT_IMAGE_PROD }}
+      MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    permissions:
+      id-token: write

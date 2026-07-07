@@ -1,0 +1,53 @@
+name: ressources-relationnelles
+
+services:
+  ressources_db:
+    container_name: ressources_db
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ressources_volume:/data/db
+    networks:
+      - ressources-network
+    restart: unless-stopped
+
+  ressources_back:
+    container_name: ressources_back
+    image: ${MONO_PROJECT_BACK}
+    ports:
+      - 5000:5000
+    environment:
+      PORT: 5000
+      MONGO_URI: mongodb://admin:${MONGO_ROOT_PASSWORD}@ressources_db:27017/${MONGO_DATABASE}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 90d
+      NODE_ENV: production
+    depends_on:
+      ressources_db:
+        condition: service_healthy
+    networks:
+      - ressources-network
+    restart: unless-stopped
+
+  ressources_front:
+    container_name: ressources_front
+    image: ${MONO_PROJECT_FRONT}
+    ports:
+      - 80:80
+    networks:
+      - ressources-network
+    restart: unless-stopped
+
+volumes:
+  ressources_volume:
+
+networks:
+  ressources-network:
