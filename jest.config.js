@@ -4,6 +4,7 @@ export default {
   testEnvironment: "node",
   testTimeout: 30000,
   extensionsToTreatAsEsm: [".ts"],
+  coverageReporters: ["lcov", "text", "html"],
   moduleNameMapper: {
     // C'est ici qu'on gère tes imports qui finissent en .js
     "^(\\.{1,2}/.*)\\.js$": "$1",

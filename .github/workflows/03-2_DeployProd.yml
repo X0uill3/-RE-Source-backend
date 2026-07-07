@@ -1,0 +1,121 @@
+name: 03-2 - Production - Deploy
+
+on:
+  workflow_call:
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      AZURE_VM_LOGIN:
+        required: true
+      AZURE_VM_PASSWORD:
+        required: true
+      PORT:
+        required: true
+      PAT_TOKEN:
+        required: true
+      FRONT_IMAGE_PROD:
+        required: true
+      MONGO_ROOT_PASSWORD:
+        required: true
+      JWT_SECRET:
+        required: true
+
+jobs:
+  Deploy_Production:
+    runs-on: ubuntu-22.04
+
+    env:
+      ResourceGroupName: "RessourcesRelationnelles-Production"
+      ResourceGroupLocation: "francecentral"
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Azure CLI Resource Group
+        uses: azure/CLI@9f7ce6f37c31b777ec6c6b6d1dfe7db79f497956 # v2
+        with:
+          inlineScript: |
+            az group create --name ${{ env.ResourceGroupName }} --location ${{ env.ResourceGroupLocation }}
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Azure Bicep Deploy
+        uses: azure/arm-deploy@a1361c2c2cd398621955b16ca32e01c65ea340f5 # v2
+        with:
+          resourceGroupName: ${{ env.ResourceGroupName }}
+          scope: resourcegroup
+          template: ./main.bicep
+          parameters: >
+            adminUsername=${{secrets.AZURE_VM_LOGIN}}
+            adminPasswordOrKey=${{secrets.AZURE_VM_PASSWORD}}
+            vmName=vm-production
+            vmSize=Standard_B2s
+
+      - name: Open Ports on Security Group
+        uses: azure/CLI@9f7ce6f37c31b777ec6c6b6d1dfe7db79f497956 # v2
+        with:
+          inlineScript: |
+            az network nsg rule create --resource-group ${{env.ResourceGroupName}} --nsg-name SecGroupNet --name PortBack-5000 --priority 100 --direction Inbound --access Allow --protocol Tcp --source-address-prefixes "*" --source-port-ranges "*" --destination-address-prefixes "*" --destination-port-ranges 5000
+            az network nsg rule create --resource-group ${{env.ResourceGroupName}} --nsg-name SecGroupNet --name PortFront-80 --priority 101 --direction Inbound --access Allow --protocol Tcp --source-address-prefixes "*" --source-port-ranges "*" --destination-address-prefixes "*" --destination-port-ranges 80
+
+      - name: Get Public IP
+        uses: azure/CLI@9f7ce6f37c31b777ec6c6b6d1dfe7db79f497956 # v2
+        with:
+          inlineScript: |
+            echo "AZURE_VM_IP=$(az vm show -d -g ${{env.ResourceGroupName}} -n vm-production --query publicIps -o tsv)" >> $GITHUB_ENV
+
+      - name: Install Docker on VM
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        with:
+          host: ${{env.AZURE_VM_IP}}
+          port: ${{secrets.PORT}}
+          username: ${{secrets.AZURE_VM_LOGIN}}
+          password: ${{secrets.AZURE_VM_PASSWORD}}
+          script: |
+            curl -o install_docker.sh https://raw.githubusercontent.com/Base-Auto/scripts/refs/heads/main/install_docker_quick.sh
+            sudo bash ./install_docker.sh
+
+      - name: Copy docker-compose to VM
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{env.AZURE_VM_IP}}
+          port: ${{secrets.PORT}}
+          username: ${{secrets.AZURE_VM_LOGIN}}
+          password: ${{secrets.AZURE_VM_PASSWORD}}
+          source: "./docker-compose.yml"
+          target: "."
+
+      - name: Downcase Image Name
+        run: echo "IMAGE_NAME_LOWER=$(echo ${GITHUB_REPOSITORY,,} | sed 's|/-|/|g')" >> $GITHUB_ENV
+
+      - name: Start Application
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        with:
+          host: ${{env.AZURE_VM_IP}}
+          port: ${{secrets.PORT}}
+          username: ${{secrets.AZURE_VM_LOGIN}}
+          password: ${{secrets.AZURE_VM_PASSWORD}}
+          script: |
+            echo ${{secrets.PAT_TOKEN}} | docker login ghcr.io -u ${{github.actor}} --password-stdin
+
+            echo MONO_PROJECT_BACK=ghcr.io/${{env.IMAGE_NAME_LOWER}}:prod > .env
+            echo MONO_PROJECT_FRONT=${{secrets.FRONT_IMAGE_PROD}} >> .env
+            echo MONGO_ROOT_PASSWORD=${{secrets.MONGO_ROOT_PASSWORD}} >> .env
+            echo MONGO_DATABASE=ressources_relationnelles >> .env
+            echo JWT_SECRET=${{secrets.JWT_SECRET}} >> .env
+
+            docker pull ghcr.io/${{env.IMAGE_NAME_LOWER}}:prod
+            docker pull ${{secrets.FRONT_IMAGE_PROD}}
+
+            docker compose down || true
+            docker compose up -d

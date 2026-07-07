@@ -1,0 +1,34 @@
+name: 02-5 - Staging - ZAP Scan
+
+on:
+  workflow_call:
+    inputs:
+      vm_ip:
+        required: true
+        type: string
+
+jobs:
+  Back_Zap_Scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run ZAP API Scan
+        uses: zaproxy/action-api-scan@77dfa9a647bb0f583e39d4df8531634d6ddd8df4 # v0.9.0
+        with:
+          format: openapi
+          target: 'http://${{ inputs.vm_ip }}:5000/api-docs'
+          fail_action: true
+          artifact_name: 'back_zap_scan'
+          issue_title: 'ZAP Back Scan Report'
+
+  Front_Zap_Scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
+        with:
+          target: 'http://${{ inputs.vm_ip }}'
+          fail_action: true
+          artifact_name: 'front_zap_scan'
+          issue_title: 'ZAP Front Scan Report'

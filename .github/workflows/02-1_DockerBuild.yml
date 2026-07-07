@@ -1,0 +1,41 @@
+name: 02-1 - Staging - Docker Build
+
+on:
+  workflow_call:
+    inputs:
+      docker-mode:
+        required: false
+        type: string
+        default: "canary"
+    secrets:
+      PAT_TOKEN:
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  USERNAME: ${{github.actor}}
+
+jobs:
+  Build-Push-Docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Registry login
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{env.REGISTRY}}
+          username: ${{env.USERNAME}}
+          password: ${{secrets.PAT_TOKEN}}
+
+      - name: Downcase Image Name
+        run: echo "IMAGE_NAME_LOWER=$(echo ${GITHUB_REPOSITORY,,} | sed 's|/-|/|g')" >> $GITHUB_ENV
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          push: true
+          tags: ${{env.REGISTRY}}/${{env.IMAGE_NAME_LOWER}}:${{inputs.docker-mode}}

@@ -1,0 +1,45 @@
+name: 02-2 - Staging - Trivy Scan
+
+on:
+  workflow_call:
+    secrets:
+      PAT_TOKEN:
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  USERNAME: ${{github.actor}}
+
+jobs:
+  Trivy-Scan:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Registry login
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{env.REGISTRY}}
+          username: ${{env.USERNAME}}
+          password: ${{secrets.PAT_TOKEN}}
+
+      - name: Downcase Image Name
+        run: echo "IMAGE_NAME_LOWER=$(echo ${GITHUB_REPOSITORY,,} | sed 's|/-|/|g')" >> $GITHUB_ENV
+
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{env.REGISTRY}}/${{env.IMAGE_NAME_LOWER}}:canary
+          format: table
+          exit-code: '1'
+          output: trivy-results.txt
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: trivy-results-back
+          path: trivy-results.txt
+          retention-days: 1
