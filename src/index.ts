@@ -2,6 +2,7 @@ import express from "express";
 // En mode 'verbatimModuleSyntax', on sépare bien les types
 import type { Application, Request, Response } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import * as dotenv from "dotenv";
 import connectDB from "./config/db.js";
 
@@ -18,6 +19,11 @@ dotenv.config();
 
 const app: Application = express();
 
+app.use(helmet({ crossOriginEmbedderPolicy: true }));
+app.use((req: Request, res: Response, next) => {
+  res.setHeader("Permissions-Policy", "geolocation=(), camera=(), microphone=()");
+  next();
+});
 app.use(cors());
 app.use(express.json());
 
